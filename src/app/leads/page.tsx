@@ -11,7 +11,7 @@ import {
   Mail,
   MessageCircle,
   MapPin,
-  Instagram,
+  AtSign,
   Globe,
   ChevronRight,
   ArrowRight,
@@ -424,7 +424,7 @@ function LeadDetailDrawer({
                   rel="noopener noreferrer"
                   className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:bg-bg-hover transition-colors"
                 >
-                  <Instagram size={16} className="text-pink-500" />
+                  <AtSign size={16} className="text-pink-500" />
                   <span className="text-[11px] text-text-muted">Instagram</span>
                 </a>
               )}
@@ -461,7 +461,7 @@ function LeadDetailDrawer({
               )}
               {lead.instagram && (
                 <div className="flex items-center gap-2">
-                  <Instagram size={13} className="text-text-muted flex-shrink-0" />
+                  <AtSign size={13} className="text-text-muted flex-shrink-0" />
                   <p className="text-sm text-text-secondary">{lead.instagram}</p>
                 </div>
               )}
