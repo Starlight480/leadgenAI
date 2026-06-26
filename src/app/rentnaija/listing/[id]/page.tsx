@@ -70,14 +70,12 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
         </Link>
 
         {/* Image gallery */}
-        <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden mb-6">
+        <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden mb-6 relative">
           {listing.images.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
-              {/* Main image */}
               <div className="md:col-span-2 h-64 md:h-80 relative overflow-hidden">
                 <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
               </div>
-              {/* Side images */}
               <div className="hidden md:grid grid-rows-2 gap-1">
                 {listing.images.slice(1, 3).map((img, i) => (
                   <div key={i} className="relative overflow-hidden">
@@ -98,20 +96,19 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
           )}
-            {listing.verified && (
-              <div className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/90 text-white text-xs font-semibold">
-                <Shield size={12} />
-                Verified Listing
-              </div>
-            )}
-            <div className="absolute top-4 right-4 flex gap-2">
-              <button className="p-2 rounded-full bg-bg-surface/80 text-text-muted hover:text-accent transition-colors">
-                <Heart size={16} />
-              </button>
-              <button className="p-2 rounded-full bg-bg-surface/80 text-text-muted hover:text-accent transition-colors">
-                <Share2 size={16} />
-              </button>
+          {listing.verified && (
+            <div className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/90 text-white text-xs font-semibold">
+              <Shield size={12} />
+              Verified Listing
             </div>
+          )}
+          <div className="absolute top-4 right-4 flex gap-2">
+            <button className="p-2 rounded-full bg-bg-surface/80 text-text-muted hover:text-accent transition-colors">
+              <Heart size={16} />
+            </button>
+            <button className="p-2 rounded-full bg-bg-surface/80 text-text-muted hover:text-accent transition-colors">
+              <Share2 size={16} />
+            </button>
           </div>
         </div>
 
