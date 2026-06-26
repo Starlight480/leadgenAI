@@ -42,28 +42,32 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile hamburger button */}
+      {/* Mobile hamburger button — always visible on mobile */}
       <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-4 left-4 z-50 p-2 rounded-md bg-bg-surface border border-border-default md:hidden hover:bg-bg-hover transition-colors"
+        onClick={() => setMobileOpen(prev => !prev)}
+        className="fixed top-3 left-3 z-[60] p-2 rounded-md bg-bg-surface border border-border-default md:hidden"
         aria-label="Toggle menu"
       >
-        {mobileOpen ? <X size={20} className="text-text-primary" /> : <Menu size={20} className="text-text-primary" />}
+        {mobileOpen ? (
+          <X size={20} className="text-text-primary" />
+        ) : (
+          <Menu size={20} className="text-text-primary" />
+        )}
       </button>
 
-      {/* Mobile backdrop */}
+      {/* Mobile backdrop — only shows when sidebar is open */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          className="fixed inset-0 bg-black/50 z-[39] md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — always visible on desktop, slide on mobile */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-60 bg-bg-surface border-r border-border-default flex flex-col z-40 transition-transform duration-200 ease-out ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        }`}
+        className="fixed left-0 top-0 h-screen w-60 bg-bg-surface border-r border-border-default flex flex-col z-[40] transition-transform duration-200 ease-out md:translate-x-0"
+        style={{ transform: mobileOpen ? 'translateX(0)' : undefined }}
+        data-mobile={mobileOpen ? 'open' : 'closed'}
       >
         {/* Logo */}
         <div className="px-4 py-5 border-b border-border-default">
@@ -81,7 +85,8 @@ export function Sidebar() {
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
                   active
                     ? "bg-accent/10 text-accent font-medium border-l-2 border-accent"
                     : "text-text-secondary hover:bg-bg-hover hover:text-text-primary"

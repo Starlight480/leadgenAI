@@ -12,9 +12,10 @@ export default function ProjectsPage() {
         <p className="text-sm text-text-muted mt-1">Track website builds from spec to live</p>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      {/* Mobile: vertical stack. Desktop: horizontal kanban */}
+      <div className="flex flex-col md:flex-row gap-4 md:overflow-x-auto md:pb-4">
         {columns.map(col => (
-          <div key={col} className="min-w-[280px] flex-1">
+          <div key={col} className="w-full md:min-w-[260px] md:flex-1">
             <div className="bg-bg-surface border border-border-default rounded-lg">
               <div className="px-4 py-3 border-b border-border-default">
                 <h3 className="text-sm font-semibold text-text-primary">{col}</h3>

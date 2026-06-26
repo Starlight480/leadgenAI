@@ -107,3 +107,18 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
+
+/* Sidebar: hidden on mobile, visible on desktop */
+@media (max-width: 767px) {
+  aside[data-mobile="closed"] {
+    transform: translateX(-100%);
+  }
+  aside[data-mobile="open"] {
+    transform: translateX(0);
+  }
+}
+@media (min-width: 768px) {
+  aside {
+    transform: translateX(0) !important;
+  }
+}
