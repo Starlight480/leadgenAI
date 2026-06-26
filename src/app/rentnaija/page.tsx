@@ -142,11 +142,15 @@ export default function RentNaijaHome() {
               href={`/rentnaija/listing/${listing.id}`}
               className="bg-bg-surface border border-border-default rounded-xl overflow-hidden hover:border-accent transition-colors group"
             >
-              {/* Image placeholder */}
-              <div className="h-48 bg-bg-primary relative">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Building size={32} className="text-text-muted opacity-30" />
-                </div>
+              {/* Image */}
+              <div className="h-48 bg-bg-primary relative overflow-hidden">
+                {listing.images[0] ? (
+                  <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Building size={32} className="text-text-muted opacity-30" />
+                  </div>
+                )}
                 {listing.verified && (
                   <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/90 text-white text-[10px] font-semibold">
                     <Shield size={10} />

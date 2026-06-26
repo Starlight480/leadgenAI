@@ -46,10 +46,14 @@ function ListingCard({ listing, view }: { listing: Listing; view: "grid" | "list
         href={`/rentnaija/listing/${listing.id}`}
         className="flex bg-bg-surface border border-border-default rounded-xl overflow-hidden hover:border-accent transition-colors group"
       >
-        <div className="w-48 h-36 bg-bg-primary relative flex-shrink-0">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Building size={24} className="text-text-muted opacity-30" />
-          </div>
+        <div className="w-48 h-36 bg-bg-primary relative flex-shrink-0 overflow-hidden">
+          {listing.images[0] ? (
+            <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" loading="lazy" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Building size={24} className="text-text-muted opacity-30" />
+            </div>
+          )}
           {listing.verified && (
             <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/90 text-white text-[10px] font-semibold">
               <Shield size={10} /> Verified
@@ -92,10 +96,14 @@ function ListingCard({ listing, view }: { listing: Listing; view: "grid" | "list
       href={`/rentnaija/listing/${listing.id}`}
       className="bg-bg-surface border border-border-default rounded-xl overflow-hidden hover:border-accent transition-colors group"
     >
-      <div className="h-44 bg-bg-primary relative">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Building size={28} className="text-text-muted opacity-30" />
-        </div>
+      <div className="h-44 bg-bg-primary relative overflow-hidden">
+        {listing.images[0] ? (
+          <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Building size={28} className="text-text-muted opacity-30" />
+          </div>
+        )}
         {listing.verified && (
           <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/90 text-white text-[10px] font-semibold">
             <Shield size={10} /> Verified

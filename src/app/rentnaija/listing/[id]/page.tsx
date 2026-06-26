@@ -69,12 +69,35 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           Back to listings
         </Link>
 
-        {/* Image placeholder */}
+        {/* Image gallery */}
         <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden mb-6">
-          <div className="h-64 md:h-80 bg-bg-primary relative">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Building size={48} className="text-text-muted opacity-20" />
+          {listing.images.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
+              {/* Main image */}
+              <div className="md:col-span-2 h-64 md:h-80 relative overflow-hidden">
+                <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
+              </div>
+              {/* Side images */}
+              <div className="hidden md:grid grid-rows-2 gap-1">
+                {listing.images.slice(1, 3).map((img, i) => (
+                  <div key={i} className="relative overflow-hidden">
+                    <img src={img} alt={`${listing.title} ${i + 2}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+                {listing.images.length <= 2 && (
+                  <div className="relative overflow-hidden bg-bg-primary flex items-center justify-center">
+                    <span className="text-xs text-text-muted">{listing.images.length} photos</span>
+                  </div>
+                )}
+              </div>
             </div>
+          ) : (
+            <div className="h-64 md:h-80 bg-bg-primary relative">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Building size={48} className="text-text-muted opacity-20" />
+              </div>
+            </div>
+          )}
             {listing.verified && (
               <div className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/90 text-white text-xs font-semibold">
                 <Shield size={12} />
@@ -221,10 +244,14 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                   href={`/rentnaija/listing/${rl.id}`}
                   className="bg-bg-surface border border-border-default rounded-xl overflow-hidden hover:border-accent transition-colors group"
                 >
-                  <div className="h-32 bg-bg-primary relative">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Building size={24} className="text-text-muted opacity-30" />
-                    </div>
+                  <div className="h-32 bg-bg-primary relative overflow-hidden">
+                    {rl.images[0] ? (
+                      <img src={rl.images[0]} alt={rl.title} className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Building size={24} className="text-text-muted opacity-30" />
+                      </div>
+                    )}
                   </div>
                   <div className="p-3">
                     <h3 className="text-xs font-semibold text-text-primary group-hover:text-accent transition-colors line-clamp-1">
