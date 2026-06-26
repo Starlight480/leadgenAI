@@ -1,9 +1,28 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Search, Filter, Download, Plus, X, Phone, Mail, MessageCircle } from "lucide-react"
+import { useState, useCallback } from "react"
+import useSWR from "swr"
+import { Search, Download, Plus, X, Phone, Mail, MessageCircle } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import type { Lead } from "@/types"
+
+const fetcher = async (url: string) => {
+  const supabase = createBrowserClient()
+  let query = supabase.from("leads").select("*").order("created_at", { ascending: false })
+
+  // Parse URL params
+  const u = new URL(url, window.location.origin)
+  const status = u.searchParams.get("status")
+  const category = u.searchParams.get("category")
+  const search = u.searchParams.get("search")
+
+  if (status && status !== "all") query = query.eq("status", status)
+  if (category && category !== "all") query = query.eq("category", category)
+  if (search) query = query.or(`business_name.ilike.%${search}%,address.ilike.%${search}%`)
+
+  const { data } = await query.limit(100)
+  return data || []
+}
 
 const statusColors: Record<string, string> = {
   new: "#3b82f6",
@@ -30,38 +49,19 @@ const statusLabels: Record<string, string> = {
 }
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([])
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
-  const [loading, setLoading] = useState(true)
 
-  const supabase = createBrowserClient()
-
-  const fetchLeads = useCallback(async () => {
-    setLoading(true)
-    let query = supabase.from("leads").select("*").order("created_at", { ascending: false })
-
-    if (statusFilter !== "all") {
-      query = query.eq("status", statusFilter)
-    }
-    if (categoryFilter !== "all") {
-      query = query.eq("category", categoryFilter)
-    }
-    if (search) {
-      query = query.or(`business_name.ilike.%${search}%,address.ilike.%${search}%`)
-    }
-
-    const { data } = await query.limit(100)
-    setLeads(data || [])
-    setLoading(false)
-  }, [search, statusFilter, categoryFilter])
-
-  useEffect(() => {
-    fetchLeads()
-  }, [fetchLeads])
+  // Build SWR key from filters
+  const swrKey = `/api/leads?status=${statusFilter}&category=${categoryFilter}&search=${search}`
+  const { data: leads = [], isLoading: loading, mutate } = useSWR(swrKey, fetcher, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    dedupingInterval: 2000,
+  })
 
   const categories = [...new Set(leads.map(l => l.category))]
 
@@ -285,7 +285,7 @@ export default function LeadsPage() {
 
       {/* Add Lead Modal */}
       {showAddForm && (
-        <AddLeadModal onClose={() => setShowAddForm(false)} onAdded={fetchLeads} />
+        <AddLeadModal onClose={() => setShowAddForm(false)} onAdded={() => mutate()} />
       )}
     </div>
   )
