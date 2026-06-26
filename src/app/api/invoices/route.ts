@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase"
+import { getSupabaseAdmin } from "@/lib/supabase"
 
 export async function GET() {
-  const supabase = await createClient()
+  const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from("invoices")
     .select("*")
@@ -13,7 +13,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
+  const supabase = getSupabaseAdmin()
   const body = await request.json()
 
   const { data, error } = await supabase

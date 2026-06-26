@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase"
+import { getSupabaseAdmin } from "@/lib/supabase"
 
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient()
+  const supabase = getSupabaseAdmin()
   const body = await request.json()
   const { id } = await params
 
@@ -24,7 +24,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient()
+  const supabase = getSupabaseAdmin()
   const { id } = await params
 
   const { error } = await supabase.from("projects").delete().eq("id", id)
