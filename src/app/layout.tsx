@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AppErrorBoundary } from "@/components/app-error-boundary"
 import RootLayoutClient from "@/components/root-layout-client"
 
 const inter = Inter({
@@ -30,9 +31,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} min-h-screen antialiased`}>
         <ThemeProvider>
-          <RootLayoutClient>
-            {children}
-          </RootLayoutClient>
+          <AppErrorBoundary>
+            <RootLayoutClient>
+              {children}
+            </RootLayoutClient>
+          </AppErrorBoundary>
         </ThemeProvider>
       </body>
     </html>
