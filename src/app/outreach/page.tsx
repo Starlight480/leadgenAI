@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Send, Copy, CheckCircle, Phone, MessageCircle } from "lucide-react"
+import { Send, Copy, CheckCircle, Phone, MessageCircle, Reply, Mail } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import type { OutreachItem } from "@/types"
 
@@ -23,11 +23,23 @@ const channelColors: Record<string, string> = {
   phone_call: "text-warning",
 }
 
+const statusStyles: Record<string, string> = {
+  replied: "bg-success/10 text-success border border-success/20",
+  sent: "bg-info/10 text-info border border-info/20",
+  manual_required: "bg-warning/10 text-warning border border-warning/20",
+  pending: "bg-warning/10 text-warning border border-warning/20",
+  delivered: "bg-info/10 text-info border border-info/20",
+  failed: "bg-error/10 text-error border border-error/20",
+  complained: "bg-error/10 text-error border border-error/20",
+}
+
 export default function OutreachPage() {
   const [items, setItems] = useState<OutreachItem[]>([])
-  const [tab, setTab] = useState<"manual" | "sent">("manual")
+  const [tab, setTab] = useState<"manual" | "sent" | "replied">("manual")
   const [loading, setLoading] = useState(true)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [markingReplyId, setMarkingReplyId] = useState<string | null>(null)
+  const [confirmReplyId, setConfirmReplyId] = useState<string | null>(null)
 
   const supabase = createBrowserClient()
 
@@ -40,8 +52,10 @@ export default function OutreachPage() {
 
     if (tab === "manual") {
       query = query.eq("requires_manual", true).eq("status", "pending")
-    } else {
+    } else if (tab === "sent") {
       query = query.eq("status", "sent")
+    } else {
+      query = query.eq("status", "replied")
     }
 
     const { data } = await query
@@ -64,11 +78,26 @@ export default function OutreachPage() {
     fetchItems()
   }
 
+  const markAsReply = async (id: string) => {
+    setMarkingReplyId(id)
+    try {
+      const res = await fetch(`/api/outreach/${id}/mark-reply`, { method: "POST" })
+      if (res.ok) {
+        fetchItems()
+      } else {
+        console.error("Failed to mark as reply")
+      }
+    } finally {
+      setMarkingReplyId(null)
+      setConfirmReplyId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Outreach</h1>
-        <p className="text-sm text-text-muted mt-1">Manage manual outreach and sent emails</p>
+        <p className="text-sm text-text-muted mt-1">Manage outreach, track replies, and update leads</p>
       </div>
 
       {/* Tabs */}
@@ -81,7 +110,7 @@ export default function OutreachPage() {
               : "text-text-muted border-transparent hover:text-text-primary"
           }`}
         >
-          Manual Queue {items.length > 0 && `(${items.length})`}
+          Manual Queue
         </button>
         <button
           onClick={() => setTab("sent")}
@@ -92,6 +121,17 @@ export default function OutreachPage() {
           }`}
         >
           Sent Emails
+        </button>
+        <button
+          onClick={() => setTab("replied")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            tab === "replied"
+              ? "text-success border-success"
+              : "text-text-muted border-transparent hover:text-text-primary"
+          }`}
+        >
+          <Reply size={14} />
+          Replied
         </button>
       </div>
 
@@ -107,27 +147,40 @@ export default function OutreachPage() {
             <p className="text-sm text-text-muted">
               {tab === "manual"
                 ? "No manual outreach items. Run a campaign to generate outreach tasks."
-                : "No sent emails yet."}
+                : tab === "sent"
+                ? "No sent emails yet."
+                : "No replies yet. Replies will appear here as they come in."}
             </p>
           </div>
         ) : (
           items.map(item => {
             const Icon = channelIcons[item.channel] || Send
+            const isReplied = item.status === "replied"
+            const isReplying = markingReplyId === item.id
+            const isConfirming = confirmReplyId === item.id
+
             return (
               <div
                 key={item.id}
-                className="bg-bg-surface border border-border-default rounded-lg p-4 hover:border-border-focus transition-colors"
+                className={`bg-bg-surface border rounded-lg p-4 transition-colors ${
+                  isReplied
+                    ? "border-success/30 bg-success/5"
+                    : "border-border-default hover:border-border-focus"
+                }`}
               >
                 <div className="flex items-start gap-3">
                   <Icon size={16} className={`${channelColors[item.channel] || "text-text-muted"} mt-0.5 shrink-0`} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-text-primary">{(item as OutreachWithLead).leads?.business_name || "Unknown"}</span>
                       {item.subject && (
                         <span className="text-xs text-text-muted truncate max-w-[200px]">— {item.subject}</span>
                       )}
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-accent/10 text-accent border border-accent/20">
                         {item.channel.replace(/_/g, " ")}
+                      </span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${statusStyles[item.status] || statusStyles.pending}`}>
+                        {isReplied ? "✓ Replied" : item.status}
                       </span>
                     </div>
                     {item.recipient && (
@@ -140,7 +193,24 @@ export default function OutreachPage() {
                     <div className="mt-2 bg-bg-primary rounded-md p-3 text-sm text-text-secondary whitespace-pre-wrap">
                       {item.message}
                     </div>
-                    <div className="flex items-center gap-3 mt-3">
+
+                    {/* Reply content (if replied) */}
+                    {isReplied && item.response_text && (
+                      <div className="mt-2 bg-success/5 border border-success/20 rounded-md p-3">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Mail size={12} className="text-success" />
+                          <span className="text-xs font-medium text-success">Reply received</span>
+                          {item.response_at && (
+                            <span className="text-[11px] text-text-muted ml-auto">
+                              {new Date(item.response_at).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-text-secondary whitespace-pre-wrap">{item.response_text}</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 mt-3 flex-wrap">
                       {tab === "manual" && (
                         <>
                           <button
@@ -158,6 +228,39 @@ export default function OutreachPage() {
                           </button>
                         </>
                       )}
+
+                      {/* Mark as Reply button (shown for sent items that aren't already replied) */}
+                      {tab === "sent" && !isReplied && (
+                        <>
+                          {isConfirming ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-text-muted">Mark this as a reply?</span>
+                              <button
+                                onClick={() => markAsReply(item.id)}
+                                disabled={isReplying}
+                                className="px-3 py-1.5 rounded-md bg-success text-white text-xs font-medium hover:bg-success/90 transition-colors disabled:opacity-50"
+                              >
+                                {isReplying ? "Saving..." : "Yes, Reply"}
+                              </button>
+                              <button
+                                onClick={() => setConfirmReplyId(null)}
+                                className="px-3 py-1.5 rounded-md border border-border-default text-xs text-text-muted hover:bg-bg-hover transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmReplyId(item.id)}
+                              className="px-3 py-1.5 rounded-md bg-success/10 border border-success/20 text-xs text-success hover:bg-success/20 transition-colors flex items-center gap-1"
+                            >
+                              <Reply size={12} />
+                              Mark as Reply
+                            </button>
+                          )}
+                        </>
+                      )}
+
                       <span className="text-[11px] text-text-muted">
                         {new Date(item.created_at).toLocaleString()}
                       </span>
