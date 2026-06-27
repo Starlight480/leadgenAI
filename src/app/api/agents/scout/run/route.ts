@@ -3,35 +3,123 @@ import { getSupabaseAdmin } from "@/lib/supabase"
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY
 
-// Phone number normalization for Nigerian numbers
-function normalizePhone(phone: string | null): string | null {
-  if (!phone) return null
+// ─── Helpers ───
+
+function normalizePhone(phone: string): string | null {
   const cleaned = phone.replace(/[\s\-()]/g, "")
   if (cleaned.startsWith("+234")) return cleaned
   if (cleaned.startsWith("0") && cleaned.length >= 11) return "+234" + cleaned.slice(1)
   if (/^[789]\d{9}$/.test(cleaned)) return "+234" + cleaned
-  return cleaned
+  return null
 }
 
-// Extract Instagram handle from text
+function extractPhones(text: string): string[] {
+  const matches = text.match(/(?:\+234|0)[789][01]\d{8}/g) || []
+  return matches.map(normalizePhone).filter(Boolean) as string[]
+}
+
 function extractInstagram(text: string): string | null {
-  const match = text.match(/instagram\.com\/([a-zA-Z0-9_.]+)/i) || text.match(/@([a-zA-Z0-9_.]+)/)
-  return match ? `@${match[1]}` : null
+  // Match instagram.com/username or @username (but not @mentions that are clearly not IG)
+  const urlMatch = text.match(/instagram\.com\/([a-zA-Z0-9_.]+)/i)
+  if (urlMatch) return `@${urlMatch[1]}`
+  // Only match @handles that look like IG (alphanumeric, underscores, dots)
+  const handleMatch = text.match(/@([a-zA-Z0-9_.]{3,30})\b/)
+  return handleMatch ? `@${handleMatch[1]}` : null
 }
 
-// Extract phone from text
-function extractPhone(text: string): string | null {
-  const match = text.match(/(?:\+234|0)[789][01]\d{8}/)
-  return match ? normalizePhone(match[0]) : null
-}
-
-// Extract email from text
 function extractEmail(text: string): string | null {
   const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
   return match ? match[0] : null
 }
 
-async function tavilySearch(query: string): Promise<string> {
+// Clean a business name extracted from search results
+function cleanBusinessName(raw: string): string | null {
+  let name = raw.trim()
+
+  // Remove common page title junk
+  name = name.replace(/\s*[\|–—-]\s*(Home\s*Page|Official\s*Site|Website|Contact\s*Us).*$/i, "")
+  name = name.replace(/^(Home\s*Page|Official\s*Site)\s*[\|–—-]\s*/i, "")
+  name = name.replace(/\s*[\|–—]\s*Instagram.*$/i, "")
+  name = name.replace(/\s*[\|–—]\s*Facebook.*$/i, "")
+  name = name.replace(/\s*[\|–—]\s*Linktr.*$/i, "")
+  name = name.replace(/\s*[\|–—]\s*Yelp.*$/i, "")
+  name = name.replace(/\s*[\|–—]\s*Tripadvisor.*$/i, "")
+  name = name.replace(/\s*[\|–—]\s*Google\s*Maps.*$/i, "")
+  name = name.replace(/\s*[\|–—]\s*Wanderboat.*$/i, "")
+
+  // Remove trailing junk patterns
+  name = name.replace(/\s*[-–—]\s*(Lagos|Nigeria|Abuja|Port Harcourt).*$/i, "")
+  name = name.replace(/\s*\(\d+\+?\s*reviews?\).*$/i, "")
+  name = name.replace(/\s*\d+\.\d\s*stars?.*$/i, "")
+
+  // Remove leading junk
+  name = name.replace(/^(Top\s+\d+|Best\s+\d+|List\s+of)\s+.*$/i, "")
+  name = name.replace(/^(Home\s*Page|Official\s*Website|Contact)\s*.*$/i, "")
+
+  // Remove lines that are clearly not business names
+  if (/^(Top|Best|List|How|What|Why|Guide|Review)/i.test(name)) return null
+  if (/^(Home|About|Contact|Menu|Services|FAQ)/i.test(name)) return null
+  if (name.length < 3 || name.length > 60) return null
+  if (/^\d+$/.test(name)) return null
+  if (name.includes("cookie") || name.includes("sign in") || name.includes("log in")) return null
+  if (name.includes("http") || name.includes("www.")) return null
+
+  return name
+}
+
+interface TavilyResult {
+  title?: string
+  content?: string
+  url?: string
+}
+
+interface Candidate {
+  business_name: string
+  instagram: string | null
+  phone: string | null
+  email: string | null
+  address: string | null
+  has_website: boolean
+  source_url: string
+}
+
+// Extract a single business candidate from a Tavily result
+function extractCandidate(result: TavilyResult, area: string, city: string): Candidate | null {
+  const title = result.title || ""
+  const content = result.content || ""
+  const url = result.url || ""
+  const combined = `${title} ${content}`
+
+  // Try to get business name from title
+  let businessName = cleanBusinessName(title)
+  if (!businessName) return null
+
+  // Extract contact info from content
+  const phones = extractPhones(combined)
+  const instagram = extractInstagram(combined)
+  const email = extractEmail(combined)
+
+  // Check if this business has a website
+  // If the URL is the business's own site (not a directory listing), it has a website
+  const isDirectory = /yelp|tripadvisor|google\.com|facebook\.com|instagram\.com|linktr\.ee|wanderboat|openrice|zomato|eatout/i.test(url)
+  const hasOwnWebsite = !isDirectory && (
+    url.includes(".com") || url.includes(".ng") || url.includes(".co")
+  )
+
+  return {
+    business_name: businessName,
+    instagram,
+    phone: phones[0] || null,
+    email,
+    address: area ? `${area}, ${city}` : city,
+    has_website: hasOwnWebsite,
+    source_url: url,
+  }
+}
+
+// ─── Tavily Search ───
+
+async function tavilySearch(query: string): Promise<TavilyResult[]> {
   const res = await fetch("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -39,17 +127,14 @@ async function tavilySearch(query: string): Promise<string> {
       api_key: TAVILY_API_KEY,
       query,
       max_results: 10,
-      include_raw_content: true,
+      include_raw_content: false,
     }),
   })
   const data = await res.json()
-  if (!data.results) return ""
-  return data.results
-    .map((r: { title?: string; content?: string; url?: string }) =>
-      [r.title, r.content, r.url].filter(Boolean).join(" ")
-    )
-    .join("\n")
+  return data.results || []
 }
+
+// ─── Main Handler ───
 
 export async function POST(request: NextRequest) {
   const supabase = getSupabaseAdmin()
@@ -78,67 +163,46 @@ export async function POST(request: NextRequest) {
   const category = campaign.category || "businesses"
   const area = campaign.area || ""
   const city = campaign.city || "Lagos"
-  const query = campaign.search_query || `${category} in ${area} ${city} Nigeria no website`
+
+  // Multiple search queries to maximize coverage
+  const queries = [
+    `${category} ${area} ${city} Nigeria phone number`,
+    `${category} near ${area} ${city} instagram`,
+    `best ${category} ${area} ${city} contact`,
+  ]
 
   try {
-    // Step 1: Search for businesses
-    const searchResults = await tavilySearch(query)
+    // Run all searches in parallel
+    const searchResults = await Promise.all(queries.map(q => tavilySearch(q)))
+    const allResults = searchResults.flat()
 
-    // Step 2: Search for businesses without websites specifically
-    const noWebsiteResults = await tavilySearch(`${category} ${area} ${city} Instagram handle -site:*.com -site:*.ng`)
+    // Deduplicate by URL
+    const seen = new Set<string>()
+    const uniqueResults = allResults.filter(r => {
+      const url = r.url || ""
+      if (seen.has(url)) return false
+      seen.add(url)
+      return true
+    })
 
-    const combinedText = searchResults + "\n" + noWebsiteResults
-
-    // Step 3: Extract business names and contact info from search results
-    const lines = combinedText.split("\n").filter((l) => l.trim().length > 10)
-    const candidates: Array<{
-      business_name: string
-      instagram: string | null
-      phone: string | null
-      email: string | null
-      address: string | null
-      has_website: boolean
-    }> = []
-
-    for (const line of lines) {
-      const instagram = extractInstagram(line)
-      const phone = extractPhone(line)
-      const email = extractEmail(line)
-
-      // Try to extract business name from the line
-      const nameMatch = line.match(/^([A-Z][^.!?\n]{5,50})/) || line.match(/\*\*([^*]+)\*\*/)
-      const businessName = nameMatch ? nameMatch[1].trim() : null
-
-      if (!businessName || businessName.length < 3) continue
-
-      // Skip if it looks like a website URL or navigation
-      if (businessName.toLowerCase().includes("sign in") || businessName.toLowerCase().includes("log in")) continue
-      if (businessName.toLowerCase().includes("cookie")) continue
-
-      // Check if this business likely has a website
-      const hasWebsite =
-        line.includes(".com") ||
-        line.includes(".ng") ||
-        line.includes("website") ||
-        line.includes("visit us")
-
-      candidates.push({
-        business_name: businessName,
-        instagram,
-        phone: phone ? normalizePhone(phone) : null,
-        email,
-        address: area ? `${area}, ${city}` : city,
-        has_website: hasWebsite,
-      })
+    // Extract candidates from structured results
+    const candidates: Candidate[] = []
+    for (const result of uniqueResults) {
+      const candidate = extractCandidate(result, area, city)
+      if (candidate) candidates.push(candidate)
     }
 
-    // Step 4: Filter out businesses with websites and deduplicate
+    // Filter: no website, has at least one contact method, deduplicate by name
     const leadsToInsert = candidates
-      .filter((c) => !c.has_website)
-      .filter((c, i, arr) => arr.findIndex((a) => a.business_name.toLowerCase() === c.business_name.toLowerCase()) === i)
+      .filter(c => !c.has_website)
+      .filter(c => c.phone || c.email || c.instagram)
+      .filter((c, i, arr) => {
+        const key = c.business_name.toLowerCase().replace(/[^a-z0-9]/g, "")
+        return arr.findIndex(a => a.business_name.toLowerCase().replace(/[^a-z0-9]/g, "") === key) === i
+      })
       .slice(0, campaign.target_count || 20)
 
-    // Step 5: Check for existing leads before inserting
+    // Check for existing leads before inserting
     const newLeads: Array<Record<string, unknown>> = []
     for (const lead of leadsToInsert) {
       const { data: existing } = await supabase
@@ -168,7 +232,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 6: Insert leads
+    // Insert leads
     let leadsFound = 0
     if (newLeads.length > 0) {
       const { data: inserted, error: insertErr } = await supabase
@@ -180,28 +244,29 @@ export async function POST(request: NextRequest) {
       leadsFound = inserted?.length || 0
     }
 
-    // Step 7: Update campaign
+    // Update campaign
     await supabase
       .from("campaigns")
       .update({
         leads_found: campaign.leads_found + leadsFound,
         leads_processed: campaign.leads_processed + leadsFound,
-        search_query: query,
+        search_query: queries[0],
         status: "completed",
         completed_at: new Date().toISOString(),
       })
       .eq("id", campaign_id)
 
-    // Step 8: Log event
+    // Log event
     await supabase.from("pipeline_events").insert({
       campaign_id,
       agent: "scout",
       event_type: "scout_completed",
-      summary: `Scout found ${leadsFound} businesses without websites for "${query}"`,
+      summary: `Scout found ${leadsFound} businesses for "${category} in ${area || city}"`,
       details: {
-        query,
+        queries_run: queries.length,
+        total_results: uniqueResults.length,
         candidates_found: candidates.length,
-        with_website: candidates.filter((c) => c.has_website).length,
+        with_contact: candidates.filter(c => c.phone || c.email || c.instagram).length,
         leads_inserted: leadsFound,
       },
       success: true,
@@ -210,10 +275,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       leads_found: leadsFound,
       candidates_scanned: candidates.length,
-      query,
+      queries_run: queries.length,
     })
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : JSON.stringify(error)
+    const errMsg = error instanceof Error ? error.message : String(error)
 
     await supabase
       .from("campaigns")
