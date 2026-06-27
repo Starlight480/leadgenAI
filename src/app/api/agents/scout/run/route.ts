@@ -95,15 +95,21 @@ function extractInstagram(text: string): string | null {
   return handleMatch ? `@${handleMatch[1]}` : null
 }
 
-function extractEmail(text: string): string | null {
+function extractEmail(text: string, sourceUrl: string): { email: string | null; verified: boolean } {
   // Skip common non-business emails
   const match = text.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)
-  if (!match) return null
+  if (!match) return { email: null, verified: false }
   const email = match[0].toLowerCase()
   // Filter out common junk/placeholder emails
-  if (email.includes("example.com") || email.includes("test.com") || email.includes("sentry.io")) return null
-  if (email.includes("noreply") || email.includes("no-reply") || email.includes("donotreply")) return null
-  return email
+  if (email.includes("example.com") || email.includes("test.com") || email.includes("sentry.io")) return { email: null, verified: false }
+  if (email.includes("noreply") || email.includes("no-reply") || email.includes("donotreply")) return { email: null, verified: false }
+  
+  // Email is "verified" only if it comes from the business's own website
+  // (not from directory listings, social media, or search snippets)
+  const isOwnWebsite = !/yelp|tripadvisor|google\.com|facebook\.com|instagram\.com|linktr\.ee|wanderboat|openrice|zomato|eatout|foursquare|yellowpages|opendi|twitter\.com|x\.com/i.test(sourceUrl)
+    && (sourceUrl.includes('.com') || sourceUrl.includes('.ng') || sourceUrl.includes('.co') || sourceUrl.includes('.org'))
+  
+  return { email, verified: isOwnWebsite }
 }
 
 // Clean a business name extracted from search results
@@ -220,6 +226,7 @@ interface Candidate {
   phone: string | null
   whatsapp: string | null
   email: string | null
+  email_verified: boolean
   address: string | null
   has_website: boolean
   source_url: string
@@ -243,7 +250,7 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
   const phones = extractPhones(combined)
   const whatsapp = extractWhatsApp(combined)
   const instagram = extractInstagram(combined)
-  const email = extractEmail(combined)
+  const { email, verified: emailVerified } = extractEmail(combined, url)
 
   // Prefer WhatsApp number, fall back to extracted phone
   const primaryPhone = whatsapp || phones[0] || null
@@ -265,6 +272,7 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
     phone: primaryPhone,
     whatsapp,
     email,
+    email_verified: emailVerified,
     address: area ? `${area}, ${city}` : city,
     has_website: hasOwnWebsite,
     source_url: url,
@@ -396,6 +404,7 @@ export async function POST(request: NextRequest) {
           phone: lead.phone,
           whatsapp: lead.whatsapp,
           email: lead.email,
+          email_verified: lead.email_verified,
           instagram: lead.instagram,
           has_website: false,
           source: "scout",

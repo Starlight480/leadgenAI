@@ -132,7 +132,15 @@ export async function POST(
     const channels: { channel: string; recipient: string; requires_manual: boolean; reason: string }[] = []
 
     if (lead.email) {
-      channels.push({ channel: "email", recipient: lead.email, requires_manual: false, reason: "" })
+      // Only auto-send if email is verified (from business's own website)
+      // Unverified emails (from search snippets/directories) need manual confirmation
+      const isVerified = (lead as Record<string, unknown>).email_verified === true
+      channels.push({
+        channel: "email",
+        recipient: lead.email,
+        requires_manual: !isVerified,
+        reason: isVerified ? "" : "Email from search snippet — verify before sending",
+      })
     }
     if (lead.phone) {
       channels.push({ channel: "whatsapp", recipient: lead.phone, requires_manual: true, reason: "WhatsApp requires manual send" })
