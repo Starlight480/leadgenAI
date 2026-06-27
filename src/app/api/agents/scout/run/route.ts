@@ -287,9 +287,15 @@ export async function POST(request: NextRequest) {
     console.log(`[scout] With phone: ${candidates.filter(c => c.phone).length}, email: ${candidates.filter(c => c.email).length}, IG: ${candidates.filter(c => c.instagram).length}`)
 
     // Filter: no website, has at least one contact method, deduplicate by name
-    const leadsToInsert = candidates
-      .filter(c => !c.has_website)
-      .filter(c => c.phone || c.email || c.instagram)
+    const noWebsite = candidates.filter(c => !c.has_website)
+    console.log(`[scout] After has_website filter: ${noWebsite.length} (from ${candidates.length})`)
+
+    const withContact = noWebsite.filter(c => c.phone || c.email || c.instagram || c.whatsapp)
+    console.log(`[scout] After contact filter: ${withContact.length} (from ${noWebsite.length})`)
+    withContact.forEach(c => console.log(`  - ${c.business_name}: phone=${c.phone} email=${c.email} ig=${c.instagram} wa=${c.whatsapp}`))
+
+    const leadsToInsert = noWebsite
+      .filter(c => c.phone || c.email || c.instagram || c.whatsapp)
       .filter((c, i, arr) => {
         // Fuzzy dedup: normalize name by removing all non-alphanumeric, lowercasing
         const nameKey = c.business_name.toLowerCase().replace(/[^a-z0-9]/g, "")
