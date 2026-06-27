@@ -212,8 +212,8 @@ export async function POST(request: NextRequest) {
       candidates_scanned: candidates.length,
       query,
     })
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error)
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : JSON.stringify(error)
 
     await supabase
       .from("campaigns")
@@ -229,6 +229,7 @@ export async function POST(request: NextRequest) {
       error: errMsg,
     })
 
+    console.error("SCOUT ERROR:", errMsg)
     return NextResponse.json({ error: errMsg }, { status: 500 })
   }
 }
