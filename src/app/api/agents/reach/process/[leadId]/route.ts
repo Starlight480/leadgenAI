@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase"
 import { callLLM } from "@/lib/llm"
-import nodemailer from "nodemailer"
+import { sendEmail } from "@/lib/resend"
 import dns from "dns"
 import { promisify } from "util"
 
 const resolveMx = promisify(dns.resolveMx)
-
-// Gmail SMTP transporter
-function getTransporter() {
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS?.replace(/\s/g, ""),
-    },
-  })
-}
 
 // Phone number normalization
 function normalizePhone(phone: string | null): string | null {
@@ -336,33 +325,34 @@ My Instagram: @dami.builds`;
         agent: "reach",
       }
 
-      // Actually send email if SMTP is configured
+      // Actually send email via Resend if configured
       // BUT skip if requires_manual (unverified email — user must confirm first)
-      if (ch.channel === "email" && process.env.SMTP_USER && process.env.SMTP_PASS && !ch.requires_manual) {
+      if (ch.channel === "email" && process.env.RESEND_API_KEY && !ch.requires_manual) {
         // Validate email domain has MX records before sending
         const emailValid = await isValidEmail(ch.recipient)
         if (!emailValid) {
           console.log(`Email ${ch.recipient} failed MX check — marking as invalid`)
           item.status = "failed"
           item.manual_reason = `Email domain "${ch.recipient.split("@")[1]}" has no MX records — email likely doesn't exist`
-          // Don't send — skip to next channel
         } else {
-          try {
-            const transporter = getTransporter()
-            await transporter.sendMail({
-              from: `"Dami" <${process.env.SMTP_USER}>`,
-              to: ch.recipient,
-              subject: subject || "Let me show you something",
-              text: message,
-              html: message.replace(/\n/g, "<br>"),
-            })
+          const fromEmail = process.env.SMTP_USER || "noreply@leadgen-os.vercel.app"
+          const result = await sendEmail({
+            from: `"Dami" <onboarding@resend.dev>`,
+            to: ch.recipient,
+            subject: subject || "Let me show you something",
+            text: message,
+            trackOpens: true,
+            trackClicks: true,
+          })
+          if (result.success) {
             item.status = "sent"
             item.sent_at = new Date().toISOString()
+            item.resend_id = result.id
             emailsSent++
-          } catch (emailErr) {
-            console.error("Email send failed:", emailErr)
+          } else {
+            console.error("Email send failed:", result.error)
             item.status = "failed"
-            item.manual_reason = `Email send failed: ${emailErr instanceof Error ? emailErr.message : "unknown"}`
+            item.manual_reason = `Email send failed: ${result.error}`
           }
         }
       }
