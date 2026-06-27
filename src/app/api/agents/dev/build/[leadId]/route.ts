@@ -88,7 +88,7 @@ Lat/Lng: ${lead.lat || 'N/A'}, ${lead.lng || 'N/A'}`
       callLLM([
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
-      ], 'xiaomi/mimo-v2.5', { temperature: 0.5, max_tokens: 4000 })
+      ], 'xiaomi/mimo-v2.5', { temperature: 0.5, max_tokens: 2000 })
     )
 
     // Parse response
@@ -98,7 +98,17 @@ Lat/Lng: ${lead.lat || 'N/A'}, ${lead.lng || 'N/A'}`
       const jsonStr = content.replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '')
       spec = JSON.parse(jsonStr)
     } catch {
-      throw new Error(`Dev returned invalid JSON: ${response.content.slice(0, 200)}`)
+      try {
+        const content = response.content.trim()
+        let jsonStr = content.replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '')
+        const open = (jsonStr.match(/{/g) || []).length
+        const close = (jsonStr.match(/}/g) || []).length
+        jsonStr += '}'.repeat(open - close)
+        jsonStr = jsonStr.replace(/,\s*$/, '')
+        spec = JSON.parse(jsonStr)
+      } catch {
+        throw new Error(`Dev returned invalid JSON: ${response.content.slice(0, 300)}`)
+      }
     }
 
     // Save spec

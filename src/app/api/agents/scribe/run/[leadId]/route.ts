@@ -88,11 +88,20 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
     let profile
     try {
       const content = response.content.trim()
-      // Strip markdown code fences if present
       const jsonStr = content.replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '')
       profile = JSON.parse(jsonStr)
     } catch {
-      throw new Error(`Scribe returned invalid JSON: ${response.content.slice(0, 200)}`)
+      try {
+        const content = response.content.trim()
+        let jsonStr = content.replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '')
+        const open = (jsonStr.match(/{/g) || []).length
+        const close = (jsonStr.match(/}/g) || []).length
+        jsonStr += '}'.repeat(open - close)
+        jsonStr = jsonStr.replace(/,\s*$/, '')
+        profile = JSON.parse(jsonStr)
+      } catch {
+        throw new Error(`Scribe returned invalid JSON: ${response.content.slice(0, 300)}`)
+      }
     }
 
     // Save business profile

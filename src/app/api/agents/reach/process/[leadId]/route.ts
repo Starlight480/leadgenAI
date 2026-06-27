@@ -130,7 +130,7 @@ Portfolio: https://dami.builds`
           { role: "user", content: userPrompt },
         ],
         "xiaomi/mimo-v2.5",
-        { temperature: 0.5, max_tokens: 1500 }
+        { temperature: 0.5, max_tokens: 2500 }
       )
     )
 
@@ -140,7 +140,20 @@ Portfolio: https://dami.builds`
       const jsonStr = content.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "")
       messages = JSON.parse(jsonStr)
     } catch {
-      throw new Error(`Reach returned invalid JSON: ${response.content.slice(0, 200)}`)
+      // Try to recover truncated JSON by closing open braces
+      try {
+        const content = response.content.trim()
+        let jsonStr = content.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "")
+        // Count open vs close braces
+        const open = (jsonStr.match(/{/g) || []).length
+        const close = (jsonStr.match(/}/g) || []).length
+        jsonStr += "}".repeat(open - close)
+        // Remove trailing comma if present
+        jsonStr = jsonStr.replace(/,\s*$/, "")
+        messages = JSON.parse(jsonStr)
+      } catch {
+        throw new Error(`Reach returned invalid JSON: ${response.content.slice(0, 300)}`)
+      }
     }
 
     // Create outreach queue items
