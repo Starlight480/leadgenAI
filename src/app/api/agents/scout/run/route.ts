@@ -181,7 +181,6 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
   // Prefer WhatsApp number, fall back to extracted phone
   const primaryPhone = whatsapp || phones[0] || null
 
-  console.log(`  [extract] "${businessName}": phones=${phones.length} whatsapp=${whatsapp ? "yes" : "no"} ig=${instagram || "none"} email=${email || "none"}`)
 
   // Check if this business has its own website
   // If the URL is from a directory/social platform, the business probably doesn't have its own site
@@ -265,7 +264,6 @@ export async function POST(request: NextRequest) {
     const searchResults = await Promise.all(queries.map(q => tavilySearch(q)))
     const allResults = searchResults.flat()
 
-    console.log(`[scout] ${queries.length} queries returned ${allResults.length} total results`)
 
     // Deduplicate by URL
     const seen = new Set<string>()
@@ -283,16 +281,11 @@ export async function POST(request: NextRequest) {
       if (candidate) candidates.push(candidate)
     }
 
-    console.log(`[scout] Extracted ${candidates.length} candidates from ${uniqueResults.length} unique results`)
-    console.log(`[scout] With phone: ${candidates.filter(c => c.phone).length}, email: ${candidates.filter(c => c.email).length}, IG: ${candidates.filter(c => c.instagram).length}`)
 
     // Filter: no website, has at least one contact method, deduplicate by name
     const noWebsite = candidates.filter(c => !c.has_website)
-    console.log(`[scout] After has_website filter: ${noWebsite.length} (from ${candidates.length})`)
 
     const withContact = noWebsite.filter(c => c.phone || c.email || c.instagram || c.whatsapp)
-    console.log(`[scout] After contact filter: ${withContact.length} (from ${noWebsite.length})`)
-    withContact.forEach(c => console.log(`  - ${c.business_name}: phone=${c.phone} email=${c.email} ig=${c.instagram} wa=${c.whatsapp}`))
 
     const leadsToInsert = noWebsite
       .filter(c => c.phone || c.email || c.instagram || c.whatsapp)
@@ -313,7 +306,6 @@ export async function POST(request: NextRequest) {
       })
       .slice(0, campaign.target_count || 20)
 
-    console.log(`[scout] ${leadsToInsert.length} leads after dedup and filtering (no website + has contact)`)
 
     // Check for existing leads before inserting
     const newLeads: Array<Record<string, unknown>> = []
@@ -390,25 +382,6 @@ export async function POST(request: NextRequest) {
       leads_found: leadsFound,
       candidates_scanned: candidates.length,
       queries_run: queries.length,
-      debug: {
-        total_results: uniqueResults.length,
-        unique_results: uniqueResults.length,
-        with_website: candidates.filter(c => c.has_website).length,
-        without_website: candidates.filter(c => !c.has_website).length,
-        with_phone: candidates.filter(c => c.phone).length,
-        with_email: candidates.filter(c => c.email).length,
-        with_instagram: candidates.filter(c => c.instagram).length,
-        with_whatsapp: candidates.filter(c => c.whatsapp).length,
-        with_any_contact: candidates.filter(c => c.phone || c.email || c.instagram).length,
-        sample_candidates: candidates.slice(0, 5).map(c => ({
-          name: c.business_name,
-          has_website: c.has_website,
-          phone: c.phone,
-          email: c.email,
-          instagram: c.instagram,
-          source_url: c.source_url?.substring(0, 80),
-        })),
-      },
     })
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error)
@@ -431,4 +404,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errMsg }, { status: 500 })
   }
 }
-// redeploy 1782552230
