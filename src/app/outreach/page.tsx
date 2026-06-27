@@ -39,7 +39,7 @@ export default function OutreachPage() {
       .order("created_at", { ascending: true })
 
     if (tab === "manual") {
-      query = query.eq("status", "pending")
+      query = query.eq("requires_manual", true).eq("status", "pending")
     } else {
       query = query.eq("status", "sent")
     }
@@ -60,7 +60,7 @@ export default function OutreachPage() {
   }
 
   const markDone = async (id: string) => {
-    await supabase.from("outreach").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", id)
+    await supabase.from("outreach").update({ status: "sent" }).eq("id", id)
     fetchItems()
   }
 
@@ -123,10 +123,19 @@ export default function OutreachPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-text-primary">{(item as OutreachWithLead).leads?.business_name || "Unknown"}</span>
+                      {item.subject && (
+                        <span className="text-xs text-text-muted truncate max-w-[200px]">— {item.subject}</span>
+                      )}
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-accent/10 text-accent border border-accent/20">
                         {item.channel.replace(/_/g, " ")}
                       </span>
                     </div>
+                    {item.recipient && (
+                      <p className="text-xs text-text-muted mt-1">To: {item.recipient}</p>
+                    )}
+                    {item.requires_manual && item.manual_reason && (
+                      <p className="text-xs text-warning mt-1">⚠ {item.manual_reason}</p>
+                    )}
 
                     <div className="mt-2 bg-bg-primary rounded-md p-3 text-sm text-text-secondary whitespace-pre-wrap">
                       {item.message}

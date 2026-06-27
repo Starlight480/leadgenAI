@@ -105,9 +105,19 @@ export interface OutreachItem {
   id: string
   lead_id: string
   channel: string
-  message: string
   status: string
+  subject: string | null
+  message: string
+  recipient: string | null
+  requires_manual: boolean
+  manual_reason: string | null
   sent_at: string | null
+  opened_at: string | null
+  response_status: string | null
+  response_text: string | null
+  response_at: string | null
+  agent: string | null
+  notes: string | null
   created_at: string
 }
 
