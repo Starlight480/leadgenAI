@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "src/app/api/agents/dev/build/**/*.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/agents/scribe/run/**/*.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/agents/reach/process/**/*.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/agents/orchestrator/run/**/*.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/agents/scout/run/**/*.ts": {
+      "maxDuration": 60
+    }
+  }
+}

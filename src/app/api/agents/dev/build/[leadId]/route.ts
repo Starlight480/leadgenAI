@@ -42,33 +42,21 @@ export async function POST(
       return await handleRentalPath(supabase, lead, profile, startTime)
     }
 
-    // Path A: Website build
-    const systemPrompt = `You are Dev, a website code generation agent for LeadGen OS. Your job is to generate a complete website specification and HTML/CSS code for a Nigerian business.
+    // Path A: Website build — generate spec only (HTML generated separately)
+    const systemPrompt = `You are Dev, a website specification agent for LeadGen OS. Generate a website SPEC for a Nigerian business. Do NOT generate HTML code — just the spec.
 
 RULES:
-- Generate a single-page HTML website with embedded CSS and JS
-- Mobile-first responsive design
-- Use clean, modern design (no glassmorphism, no gradients)
-- Include: Hero, About, Services/Menu, Contact, Footer
-- Use the business details provided to write real, compelling content
-- Include a Google Maps embed if coordinates are available
-- Include click-to-call buttons for phone numbers
+- Output a structured spec with colors, content, and page structure
+- Mobile-first design choices
+- Clean, modern (no glassmorphism, no gradients)
 - Use Nigerian Naira (₦) for pricing
-- The site should be complete and ready to deploy
+- Be specific and compelling with the content
 
 OUTPUT FORMAT (valid JSON only):
 {
   "site_type": "html",
-  "pages": {
-    "structure": ["hero", "about", "services", "contact", "footer"]
-  },
-  "color_palette": {
-    "primary": "#hex",
-    "secondary": "#hex",
-    "accent": "#hex",
-    "background": "#hex",
-    "text": "#hex"
-  },
+  "pages": {"structure": ["hero", "about", "services", "contact", "footer"]},
+  "color_palette": {"primary": "#hex", "secondary": "#hex", "accent": "#hex", "background": "#hex", "text": "#hex"},
   "content": {
     "hero_headline": "...",
     "hero_subheadline": "...",
@@ -77,11 +65,8 @@ OUTPUT FORMAT (valid JSON only):
     "contact_text": "...",
     "cta_text": "..."
   },
-  "html_code": "<!DOCTYPE html>...",
   "site_title": "Business Name - Tagline"
 }
-
-Write complete, valid HTML with embedded CSS. The HTML must be fully functional.
 
 Respond with ONLY the JSON object. No markdown, no explanation.`
 
@@ -103,7 +88,7 @@ Lat/Lng: ${lead.lat || 'N/A'}, ${lead.lng || 'N/A'}`
       callLLM([
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
-      ], 'xiaomi/mimo-v2.5', { temperature: 0.5, max_tokens: 8000 })
+      ], 'xiaomi/mimo-v2.5', { temperature: 0.5, max_tokens: 4000 })
     )
 
     // Parse response
