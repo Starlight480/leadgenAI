@@ -121,7 +121,7 @@ Pitch: ${profile?.website_pitch || "N/A"}
 Pages recommended: ${profile?.recommended_pages?.join(", ") || "N/A"}
 Price: ₦${(profile?.price_recommendation_ngn || 0).toLocaleString()}
 Damien's phone: ${process.env.SMTP_USER || "Available on request"}
-Portfolio: https://dami.builds`
+Portfolio: @dami.builds on Instagram`
 
     const response = await withRetry(() =>
       callLLM(

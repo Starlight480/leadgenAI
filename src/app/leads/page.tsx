@@ -319,9 +319,63 @@ function LeadDetailDrawer({
 }) {
   const [notes, setNotes] = useState(lead.notes || "")
   const [notesSaved, setNotesSaved] = useState(false)
+  const [runningAgent, setRunningAgent] = useState<string | null>(null)
+  const [agentResult, setAgentResult] = useState<string | null>(null)
   const st = STATUS_MAP[lead.status]
   const next = onNextStatus(lead.status)
   const prev = onPrevStatus(lead.status)
+
+  const runAgent = async (agent: string) => {
+    setRunningAgent(agent)
+    setAgentResult(null)
+    try {
+      const url = agent === "scribe"
+        ? `/api/agents/scribe/run/${lead.id}`
+        : agent === "dev"
+        ? `/api/agents/dev/build/${lead.id}`
+        : `/api/agents/reach/process/${lead.id}`
+      const body = agent === "dev" ? JSON.stringify({ path: "website" }) : undefined
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        ...(body ? { body } : {}),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Agent failed")
+      setAgentResult(`${agent} done ✅`)
+    } catch (err) {
+      setAgentResult(`${agent} failed: ${err instanceof Error ? err.message : "unknown"}`)
+    }
+    setRunningAgent(null)
+  }
+
+  const runPipeline = async () => {
+    setRunningAgent("pipeline")
+    setAgentResult(null)
+    const steps = ["scribe", "dev", "reach"]
+    for (const step of steps) {
+      try {
+        setAgentResult(`Running ${step}...`)
+        const url = step === "dev"
+          ? `/api/agents/dev/build/${lead.id}`
+          : `/api/agents/${step}/run/${lead.id}`
+        const body = step === "dev" ? JSON.stringify({ path: "website" }) : undefined
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          ...(body ? { body } : {}),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || `${step} failed`)
+      } catch (err) {
+        setAgentResult(`Pipeline stopped at ${step}: ${err instanceof Error ? err.message : "unknown"}`)
+        setRunningAgent(null)
+        return
+      }
+    }
+    setAgentResult("Full pipeline complete ✅")
+    setRunningAgent(null)
+  }
 
   const saveNotes = () => {
     onNotesUpdate(lead.id, notes)
@@ -498,6 +552,71 @@ function LeadDetailDrawer({
             <div className="mt-2 text-[11px] text-text-muted">
               Added {new Date(lead.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}
             </div>
+          </div>
+
+          {/* Agent Actions */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-2">Agent Actions</p>
+            <button
+              onClick={runPipeline}
+              disabled={!!runningAgent}
+              className="w-full mb-3 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {runningAgent === "pipeline" ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Running Pipeline...
+                </>
+              ) : (
+                <>▶ Run Full Pipeline</>
+              )}
+            </button>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => runAgent("scribe")}
+                disabled={!!runningAgent}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:border-accent/40 hover:bg-bg-hover transition-colors disabled:opacity-50"
+              >
+                {runningAgent === "scribe" ? (
+                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span className="text-lg">✍️</span>
+                )}
+                <span className="text-[11px] text-text-muted">Scribe</span>
+                <span className="text-[9px] text-text-muted">Profile</span>
+              </button>
+              <button
+                onClick={() => runAgent("dev")}
+                disabled={!!runningAgent}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:border-accent/40 hover:bg-bg-hover transition-colors disabled:opacity-50"
+              >
+                {runningAgent === "dev" ? (
+                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span className="text-lg">🛠️</span>
+                )}
+                <span className="text-[11px] text-text-muted">Dev</span>
+                <span className="text-[9px] text-text-muted">Build Spec</span>
+              </button>
+              <button
+                onClick={() => runAgent("reach")}
+                disabled={!!runningAgent}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:border-accent/40 hover:bg-bg-hover transition-colors disabled:opacity-50"
+              >
+                {runningAgent === "reach" ? (
+                  <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span className="text-lg">📧</span>
+                )}
+                <span className="text-[11px] text-text-muted">Reach</span>
+                <span className="text-[9px] text-text-muted">Outreach</span>
+              </button>
+            </div>
+            {agentResult && (
+              <p className={`text-xs mt-2 ${agentResult.includes("✅") ? "text-success" : "text-error"}`}>
+                {agentResult}
+              </p>
+            )}
           </div>
 
           {/* Notes */}
