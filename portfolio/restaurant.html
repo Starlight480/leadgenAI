@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Orange Grill — Lekki, Lagos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --orange: #d4560a; --cream: #fdf6ec; --brown: #2d1810; --orange-light: #e87a33; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--brown); line-height: 1.7; }
+  h1, h2, h3, h4 { font-family: 'Playfair Display', serif; }
+  a { text-decoration: none; color: inherit; }
+
+  /* NAV */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(253,246,236,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(45,24,16,0.08); transition: box-shadow 0.3s; }
+  nav.scrolled { box-shadow: 0 2px 20px rgba(45,24,16,0.1); }
+  .nav-inner { max-width: 1100px; margin: 0 auto; padding: 0.9rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  .nav-logo { font-family: 'Playfair Display', serif; font-size: 1.35rem; font-weight: 700; color: var(--orange); }
+  .nav-links { display: flex; gap: 2rem; list-style: none; }
+  .nav-links a { font-size: 0.88rem; font-weight: 500; letter-spacing: 0.03em; text-transform: uppercase; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--orange); }
+  .nav-cta { background: var(--orange); color: #fff; padding: 0.55rem 1.4rem; border-radius: 50px; font-size: 0.85rem; font-weight: 600; transition: background 0.2s, transform 0.2s; }
+  .nav-cta:hover { background: var(--orange-light); transform: translateY(-1px); }
+  .menu-toggle { display: none; background: none; border: none; font-size: 1.5rem; color: var(--brown); cursor: pointer; }
+
+  /* HERO */
+  .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; background: linear-gradient(135deg, var(--brown) 0%, #4a2a1a 50%, var(--orange) 100%); color: #fff; padding: 6rem 2rem 4rem; position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; top: -50%; right: -30%; width: 80vw; height: 80vw; background: radial-gradient(circle, rgba(212,86,10,0.25) 0%, transparent 70%); border-radius: 50%; }
+  .hero-content { position: relative; z-index: 1; max-width: 700px; }
+  .hero-emoji { font-size: 3.5rem; margin-bottom: 1.5rem; display: block; }
+  .hero h1 { font-size: clamp(2.8rem, 6vw, 4.5rem); font-weight: 700; line-height: 1.1; margin-bottom: 1rem; }
+  .hero p { font-size: 1.15rem; opacity: 0.9; margin-bottom: 2.5rem; font-weight: 300; max-width: 500px; margin-left: auto; margin-right: auto; }
+  .hero-btn { display: inline-block; padding: 1rem 2.5rem; background: var(--orange); color: #fff; border-radius: 50px; font-weight: 600; font-size: 1rem; transition: all 0.3s; }
+  .hero-btn:hover { background: var(--orange-light); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(212,86,10,0.4); }
+
+  /* SECTIONS */
+  section { padding: 6rem 2rem; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .section-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--orange); font-weight: 600; margin-bottom: 0.8rem; }
+  .section-title { font-size: clamp(2rem, 4vw, 2.8rem); margin-bottom: 1.2rem; line-height: 1.2; }
+  .section-subtitle { color: rgba(45,24,16,0.7); font-size: 1.05rem; max-width: 600px; }
+
+  /* MENU */
+  .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+  .menu-card { background: #fff; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(45,24,16,0.06); transition: transform 0.3s, box-shadow 0.3s; }
+  .menu-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(45,24,16,0.12); }
+  .menu-card-emoji { font-size: 2.5rem; margin-bottom: 1rem; }
+  .menu-card h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+  .menu-card p { font-size: 0.9rem; color: rgba(45,24,16,0.65); margin-bottom: 1rem; line-height: 1.6; }
+  .menu-price { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: var(--orange); }
+
+  /* ABOUT */
+  .about { background: #fff; }
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; margin-top: 3rem; }
+  .about-text p { margin-bottom: 1.2rem; color: rgba(45,24,16,0.75); font-size: 1.02rem; }
+  .about-image { background: linear-gradient(135deg, var(--orange), var(--brown)); border-radius: 20px; height: 350px; display: flex; align-items: center; justify-content: center; font-size: 5rem; }
+
+  /* LOCATION */
+  .location-card { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3rem; }
+  .loc-info { background: var(--brown); color: #fff; border-radius: 20px; padding: 2.5rem; }
+  .loc-info h3 { font-size: 1.3rem; margin-bottom: 1.5rem; color: var(--orange-light); }
+  .loc-item { display: flex; gap: 1rem; margin-bottom: 1.2rem; font-size: 0.95rem; }
+  .loc-item span { opacity: 0.7; min-width: 20px; text-align: center; }
+  .loc-map { background: rgba(212,86,10,0.08); border-radius: 20px; display: flex; align-items: center; justify-content: center; min-height: 250px; font-size: 4rem; }
+
+  /* CONTACT */
+  .contact { background: var(--brown); color: #fff; text-align: center; }
+  .contact .section-label { color: var(--orange-light); }
+  .contact .section-subtitle { color: rgba(255,255,255,0.6); margin: 0 auto 3rem; }
+  .contact-links { display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; }
+  .contact-link { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 50px; padding: 0.8rem 1.8rem; font-size: 0.9rem; transition: all 0.3s; }
+  .contact-link:hover { background: var(--orange); border-color: var(--orange); }
+
+  /* FOOTER */
+  footer { background: var(--brown); border-top: 1px solid rgba(255,255,255,0.08); text-align: center; padding: 2rem; color: rgba(255,255,255,0.4); font-size: 0.82rem; }
+
+  /* ANIMATIONS */
+  .fade-in { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--cream); flex-direction: column; padding: 1.5rem 2rem; gap: 1.2rem; border-bottom: 1px solid rgba(45,24,16,0.08); }
+    .nav-links.open { display: flex; }
+    .menu-toggle { display: block; }
+    .about-grid, .location-card { grid-template-columns: 1fr; gap: 2rem; }
+    .about-image { height: 250px; }
+    .contact-links { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">🍽️ The Orange Grill</a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#menu">Menu</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#location">Location</a></li>
+      <li><a href="#contact" class="nav-cta">Reserve a Table</a></li>
+    </ul>
+    <button class="menu-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-content fade-in">
+    <span class="hero-emoji">🍽️</span>
+    <h1>The Orange Grill</h1>
+    <p>Sizzling grills, bold flavours, and good vibes — right in the heart of Lekki</p>
+    <a href="#menu" class="hero-btn">Explore Our Menu</a>
+  </div>
+</section>
+
+<section id="menu">
+  <div class="container">
+    <div class="fade-in">
+      <p class="section-label">Our Favourites</p>
+      <h2 class="section-title">Menu Highlights</h2>
+      <p class="section-subtitle">Freshly prepared with locally sourced ingredients and our signature Orange Grill spice blend.</p>
+    </div>
+    <div class="menu-grid">
+      <div class="menu-card fade-in">
+        <div class="menu-card-emoji">🥩</div>
+        <h3>Grilled Beef Suya Platter</h3>
+        <p>Succulent beef suya served with jollof rice, fried plantain, and our house-made yaji sauce</p>
+        <div class="menu-price">₦4,500</div>
+      </div>
+      <div class="menu-card fade-in">
+        <div class="menu-card-emoji">🍗</div>
+        <h3>Smoked Jollof Chicken</h3>
+        <p>Whole smoked chicken glazed in jollof pepper sauce, served with garlic butter yam fries</p>
+        <div class="menu-price">₦5,200</div>
+      </div>
+      <div class="menu-card fade-in">
+        <div class="menu-card-emoji">🐟</div>
+        <h3>Catfish Pepper Soup</h3>
+        <p>Tender catfish in a rich, spicy pepper soup with garden eggs and a side of white rice</p>
+        <div class="menu-price">₦3,800</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="about" class="about">
+  <div class="container">
+    <div class="about-grid">
+      <div class="fade-in">
+        <p class="section-label">Our Story</p>
+        <h2 class="section-title">Where Lagos Meets the Grill</h2>
+        <div class="about-text">
+          <p>Founded in 2023, The Orange Grill started as a roadside suya spot that quickly became Lekki's worst-kept secret. Our founder, Chidi Okonkwo, combined his grandmother's spice recipes with a passion for open-flame cooking.</p>
+          <p>Today, we're a full-service restaurant with over 40 dishes on our menu, but we've never lost touch with what made us special — bold flavours, honest portions, and a space where everyone feels at home.</p>
+          <p>Whether you're here for a quick lunch or a weekend dinner with friends, we've got you covered.</p>
+        </div>
+      </div>
+      <div class="about-image fade-in">🔥</div>
+    </div>
+  </div>
+</section>
+
+<section id="location">
+  <div class="container">
+    <div class="fade-in">
+      <p class="section-label">Find Us</p>
+      <h2 class="section-title">Visit Our Spot</h2>
+    </div>
+    <div class="location-card">
+      <div class="loc-info fade-in">
+        <h3>📍 Address & Hours</h3>
+        <div class="loc-item"><span>🏠</span><div>14 Admiralty Way, Lekki Phase 1, Lagos</div></div>
+        <div class="loc-item"><span>📞</span><div>+234 812 345 6789</div></div>
+        <div class="loc-item"><span>🕐</span><div>Mon – Thu: 11am – 10pm</div></div>
+        <div class="loc-item"><span>🕐</span><div>Fri – Sun: 11am – 12am</div></div>
+        <div class="loc-item"><span>📸</span><div>@theorangegrill</div></div>
+      </div>
+      <div class="loc-map fade-in">📍</div>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="contact">
+  <div class="container">
+    <div class="fade-in">
+      <p class="section-label">Get In Touch</p>
+      <h2 class="section-title">We'd Love to Hear From You</h2>
+      <p class="section-subtitle">Book a table, place a takeout order, or just say hello — we're always happy to connect.</p>
+    </div>
+    <div class="contact-links fade-in">
+      <a href="tel:+2348123456789" class="contact-link">📞 +234 812 345 6789</a>
+      <a href="https://instagram.com/theorangegrill" class="contact-link">📸 Instagram</a>
+      <a href="https://wa.me/2348123456789" class="contact-link">💬 WhatsApp</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 The Orange Grill. All rights reserved. | Built with ♥ by LeadGen OS</p>
+</footer>
+
+<script>
+  // Sticky nav shadow
+  window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+  });
+  // Fade-in on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

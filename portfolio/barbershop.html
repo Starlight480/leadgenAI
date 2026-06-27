@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sharp Cut Barbers — Ajah, Lagos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --black: #111111; --gold: #c9a84c; --white: #ffffff; --gold-light: #e0c56e; --black-light: #1a1a1a; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', sans-serif; background: var(--white); color: var(--black); line-height: 1.7; }
+  h1, h2, h3, h4 { font-family: 'Playfair Display', serif; }
+  a { text-decoration: none; color: inherit; }
+
+  /* NAV */
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(17,17,17,0.06); transition: box-shadow 0.3s; }
+  nav.scrolled { box-shadow: 0 2px 20px rgba(17,17,17,0.1); }
+  .nav-inner { max-width: 1100px; margin: 0 auto; padding: 0.9rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  .nav-logo { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: var(--black); }
+  .nav-logo span { color: var(--gold); }
+  .nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
+  .nav-links a { font-size: 0.88rem; font-weight: 500; letter-spacing: 0.03em; text-transform: uppercase; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--gold); }
+  .nav-cta { background: var(--gold) !important; color: var(--black) !important; padding: 0.55rem 1.4rem; border-radius: 50px; font-size: 0.85rem; font-weight: 700; transition: all 0.2s; }
+  .nav-cta:hover { background: var(--gold-light) !important; transform: translateY(-1px); }
+  .menu-toggle { display: none; background: none; border: none; font-size: 1.5rem; color: var(--black); cursor: pointer; }
+
+  /* HERO */
+  .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; background: var(--black); color: var(--white); padding: 6rem 2rem 4rem; position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; height: 600px; background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%); border-radius: 50%; }
+  .hero::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(transparent, var(--black)); }
+  .hero-content { position: relative; z-index: 1; max-width: 700px; }
+  .hero-emoji { font-size: 3.5rem; margin-bottom: 1.5rem; display: block; }
+  .hero h1 { font-size: clamp(3rem, 7vw, 5rem); font-weight: 700; line-height: 1.05; margin-bottom: 1rem; }
+  .hero h1 span { color: var(--gold); }
+  .hero p { font-size: 1.15rem; opacity: 0.7; margin-bottom: 2.5rem; font-weight: 300; max-width: 500px; margin-left: auto; margin-right: auto; }
+  .hero-btn { display: inline-block; padding: 1rem 2.5rem; background: var(--gold); color: var(--black); border-radius: 50px; font-weight: 700; font-size: 1rem; transition: all 0.3s; }
+  .hero-btn:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(201,168,76,0.35); }
+
+  /* SECTIONS */
+  section { padding: 6rem 2rem; }
+  .container { max-width: 900px; margin: 0 auto; }
+  .section-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--gold); font-weight: 600; margin-bottom: 0.8rem; }
+  .section-title { font-size: clamp(2rem, 4vw, 2.8rem); margin-bottom: 1.2rem; line-height: 1.2; }
+  .section-subtitle { color: rgba(17,17,17,0.6); font-size: 1.05rem; max-width: 550px; }
+
+  /* SERVICES */
+  .services { background: var(--black); color: var(--white); }
+  .services .section-subtitle { color: rgba(255,255,255,0.5); }
+  .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+  .service-card { background: var(--black-light); border: 1px solid rgba(201,168,76,0.15); border-radius: 16px; padding: 2.2rem; transition: transform 0.3s, border-color 0.3s; }
+  .service-card:hover { transform: translateY(-4px); border-color: var(--gold); }
+  .service-emoji { font-size: 2.8rem; margin-bottom: 1rem; }
+  .service-card h3 { font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--white); }
+  .service-card p { font-size: 0.88rem; color: rgba(255,255,255,0.5); margin-bottom: 1.2rem; line-height: 1.6; }
+  .service-price { font-family: 'Playfair Display', serif; font-size: 1.35rem; font-weight: 700; color: var(--gold); }
+
+  /* ABOUT */
+  .about { background: var(--white); }
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; margin-top: 3rem; }
+  .about-image { background: linear-gradient(135deg, var(--black), var(--gold)); border-radius: 20px; height: 350px; display: flex; align-items: center; justify-content: center; font-size: 5rem; }
+  .about-text p { margin-bottom: 1.2rem; color: rgba(17,17,17,0.7); font-size: 1.02rem; }
+
+  /* LOCATION */
+  .location { background: #f7f7f7; }
+  .loc-card { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3rem; }
+  .loc-info { background: var(--black); color: var(--white); border-radius: 20px; padding: 2.5rem; }
+  .loc-info h3 { font-size: 1.3rem; margin-bottom: 1.5rem; color: var(--gold); }
+  .loc-item { display: flex; gap: 1rem; margin-bottom: 1.2rem; font-size: 0.95rem; }
+  .loc-item span { opacity: 0.6; min-width: 20px; text-align: center; }
+  .loc-map { background: rgba(201,168,76,0.08); border-radius: 20px; display: flex; align-items: center; justify-content: center; min-height: 250px; font-size: 4rem; }
+
+  /* WHATSAPP CTA */
+  .whatsapp-cta { background: var(--gold); text-align: center; padding: 5rem 2rem; }
+  .whatsapp-cta .section-title { color: var(--black); }
+  .whatsapp-cta .section-subtitle { color: rgba(17,17,17,0.65); margin: 0 auto 2.5rem; }
+  .wa-btn { display: inline-flex; align-items: center; gap: 0.8rem; padding: 1.1rem 3rem; background: #25D366; color: #fff; border-radius: 50px; font-weight: 700; font-size: 1.05rem; transition: all 0.3s; }
+  .wa-btn:hover { background: #20ba5a; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(37,211,102,0.35); }
+
+  /* CONTACT */
+  .contact { background: var(--black); color: var(--white); text-align: center; }
+  .contact .section-label { color: var(--gold); }
+  .contact .section-subtitle { color: rgba(255,255,255,0.5); margin: 0 auto 3rem; }
+  .contact-links { display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; }
+  .contact-link { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 50px; padding: 0.8rem 1.8rem; font-size: 0.9rem; color: var(--white); transition: all 0.3s; }
+  .contact-link:hover { background: var(--gold); border-color: var(--gold); color: var(--black); }
+
+  /* FOOTER */
+  footer { background: var(--black); border-top: 1px solid rgba(255,255,255,0.06); text-align: center; padding: 2rem; color: rgba(255,255,255,0.35); font-size: 0.82rem; }
+
+  /* ANIMATIONS */
+  .fade-in { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--white); flex-direction: column; padding: 1.5rem 2rem; gap: 1.2rem; border-bottom: 1px solid rgba(17,17,17,0.06); }
+    .nav-links.open { display: flex; }
+    .menu-toggle { display: block; }
+    .about-grid, .loc-card { grid-template-columns: 1fr; gap: 2rem; }
+    .about-image { height: 250px; }
+    .contact-links { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">✂️ Sharp Cut <span>Barbers</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#services">Services</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#location">Location</a></li>
+      <li><a href="#book" class="nav-cta">Book a Cut</a></li>
+    </ul>
+    <button class="menu-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">☰</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-content fade-in">
+    <span class="hero-emoji">✂️</span>
+    <h1>Sharp Cut <span>Barbers</span></h1>
+    <p>Precision cuts, clean lineups, and the freshest fades in Ajah. Walk-ins welcome.</p>
+    <a href="https://wa.me/2348134567890" class="hero-btn">WhatsApp Book Now</a>
+  </div>
+</section>
+
+<section id="services" class="services">
+  <div class="container">
+    <div class="fade-in">
+      <p class="section-label">What We Do</p>
+      <h2 class="section-title">Our Services</h2>
+      <p class="section-subtitle">Every cut is personal. We listen, we style, we deliver. No rush jobs.</p>
+    </div>
+    <div class="services-grid">
+      <div class="service-card fade-in">
+        <div class="service-emoji">💇‍♂️</div>
+        <h3>Skin Fade</h3>
+        <p>Clean skin fade with your choice of style — taper, burst, or drop. Finished with edge cleanup.</p>
+        <div class="service-price">₦2,500</div>
+      </div>
+      <div class="service-card fade-in">
+        <div class="service-emoji">📐</div>
+        <h3>Full Lineup</h3>
+        <p>Precise hairline shape-up, temple cleanup, and beard edge. The finishing touch you need.</p>
+        <div class="service-price">₦1,500</div>
+      </div>
+      <div class="service-card fade-in">
+        <div class="service-emoji">🧖‍♂️</div>
+        <h3>Hot Towel Shave</h3>
+        <p>Classic straight-razor shave with hot towel treatment and aftershave balm. Pure luxury.</p>
+        <div class="service-price">₦3,000</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="about" class="about">
+  <div class="container">
+    <div class="about-grid">
+      <div class="about-image fade-in">💈</div>
+      <div class="fade-in">
+        <p class="section-label">Who We Are</p>
+        <h2 class="section-title">More Than a Barbershop</h2>
+        <div class="about-text">
+          <p>Sharp Cut Barbers started in 2021 when founder Emeka Nwankwo noticed every barbershop in Ajah was the same — long waits, rushed cuts, and zero attention to detail. He wanted to change that.</p>
+          <p>We built a space where guys come to hang out as much as they come to get fresh. Free Wi-Fi, cold drinks, and barbers who actually listen. Every cut comes with a guarantee — if it's not right, we fix it. Free.</p>
+          <p>Walk in as a customer. Leave as family. ✊</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="location" class="location">
+  <div class="container">
+    <div class="fade-in">
+      <p class="section-label">Find Us</p>
+      <h2 class="section-title">Come Through</h2>
+    </div>
+    <div class="loc-card">
+      <div class="loc-info fade-in">
+        <h3>📍 Location & Hours</h3>
+        <div class="loc-item"><span>🏠</span><div>Block 3, Ajah Under Bridge, Ajah, Lagos</div></div>
+        <div class="loc-item"><span>📞</span><div>+234 813 456 7890</div></div>
+        <div class="loc-item"><span>🕐</span><div>Mon – Fri: 9am – 9pm</div></div>
+        <div class="loc-item"><span>🕐</span><div>Sat: 8am – 10pm</div></div>
+        <div class="loc-item"><span>🕐</span><div>Sun: 12pm – 6pm</div></div>
+        <div class="loc-item"><span>📸</span><div>@sharpcutbarbers</div></div>
+      </div>
+      <div class="loc-map fade-in">📍</div>
+    </div>
+  </div>
+</section>
+
+<section id="book" class="whatsapp-cta">
+  <div class="container fade-in">
+    <p class="section-label">Skip the Queue</p>
+    <h2 class="section-title">Book Your Cut on WhatsApp</h2>
+    <p class="section-subtitle">Send us a message with your preferred time and style. We'll confirm and save your spot — no app needed.</p>
+    <a href="https://wa.me/2348134567890?text=Hey%20Sharp%20Cut!%20I'd%20like%20to%20book%20a%20cut." class="wa-btn">💬 WhatsApp Us Now</a>
+  </div>
+</section>
+
+<section id="contact" class="contact">
+  <div class="container">
+    <div class="fade-in">
+      <p class="section-label">Connect</p>
+      <h2 class="section-title">Stay in the Loop</h2>
+      <p class="section-subtitle">Follow us for fresh cut inspiration, flash deals, and behind-the-scenes content.</p>
+    </div>
+    <div class="contact-links fade-in">
+      <a href="tel:+234****7890" class="contact-link">📞 +234 813 456 7890</a>
+      <a href="https://instagram.com/sharpcutbarbers" class="contact-link">📸 @sharpcutbarbers</a>
+      <a href="https://wa.me/2348134567890" class="contact-link">💬 WhatsApp</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 Sharp Cut Barbers. All rights reserved. | Built with ♥ by LeadGen OS</p>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+  });
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
