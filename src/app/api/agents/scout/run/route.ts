@@ -87,13 +87,27 @@ function extractWhatsApp(text: string): string | null {
 
 function extractInstagram(text: string): string | null {
   const urlMatch = text.match(/instagram\.com\/([a-zA-Z0-9_.]+)/i)
-  if (urlMatch) return `@${urlMatch[1]}`
+  if (urlMatch) {
+    const handle = `@${urlMatch[1]}`
+    // Filter out non-handles
+    if (handle.includes('.com') || handle.includes('.org') || handle.length < 3) return null
+    return handle
+  }
   // Match @handles — but prefer ones near 'instagram' context
-  const igContextMatch = text.match(/instagram[\s:.\-]*@([a-zA-Z0-9_.]{3,30})\b/i)
-  if (igContextMatch) return `@${igContextMatch[1]}`
+  const igContextMatch = text.match(/instagram[\s:.\\-]*@([a-zA-Z0-9_.]{3,30})\b/i)
+  if (igContextMatch) {
+    const handle = `@${igContextMatch[1]}`
+    if (handle.includes('.com') || handle.length < 3) return null
+    return handle
+  }
   // Fallback: generic @handle
   const handleMatch = text.match(/@([a-zA-Z0-9_.]{3,30})\b/)
-  return handleMatch ? `@${handleMatch[1]}` : null
+  if (handleMatch) {
+    const handle = `@${handleMatch[1]}`
+    if (handle.includes('.com') || handle.length < 3) return null
+    return handle
+  }
+  return null
 }
 
 function extractEmail(text: string, sourceUrl: string): { email: string | null; verified: boolean } {
@@ -119,18 +133,18 @@ function cleanBusinessName(raw: string): string | null {
 
   // === INSTAGRAM / FACEBOOK / SOCIAL PLATFORM JUNK ===
   // Remove "- Instagram", "| Instagram", "· Instagram", "(photos and videos)" etc
-  name = name.replace(/\s*[-|·]\s*Instagram\s*(photos?\s*and\s*videos?)?$/i, "")
-  name = name.replace(/\s*[-|·]\s*Facebook\s*(page|profile|photos?)?$/i, "")
-  name = name.replace(/\s*[-|·]\s*TikTok\s*(video|profile)?$/i, "")
-  name = name.replace(/\s*[-|·]\s*Twitter\s*(profile)?$/i, "")
-  name = name.replace(/\s*[-|·]\s*YouTube\s*(channel)?$/i, "")
-  name = name.replace(/\s*[-|·]\s*LinkedIn\s*(profile|company)?$/i, "")
-  name = name.replace(/\s*[-|·]\s*Linktr\.?ee.*$/i, "")
-  name = name.replace(/\s*[-|·]\s*Yelp.*$/i, "")
-  name = name.replace(/\s*[-|·]\s*Tripadvisor.*$/i, "")
-  name = name.replace(/\s*[-|·]\s*Google\s*Maps.*$/i, "")
-  name = name.replace(/\s*[-|·]\s*Wanderboat.*$/i, "")
-  name = name.replace(/\s*[-|·]\s*Pinterest.*$/i, "")
+  name = name.replace(/\s*[-|·•]\s*Instagram\s*(photos?\s*and\s*videos?)?$/i, "")
+  name = name.replace(/\s*[-|·•]\s*Facebook\s*(page|profile|photos?)?$/i, "")
+  name = name.replace(/\s*[-|·•]\s*TikTok\s*(video|profile)?$/i, "")
+  name = name.replace(/\s*[-|·•]\s*Twitter\s*(profile)?$/i, "")
+  name = name.replace(/\s*[-|·•]\s*YouTube\s*(channel)?$/i, "")
+  name = name.replace(/\s*[-|·•]\s*LinkedIn\s*(profile|company)?$/i, "")
+  name = name.replace(/\s*[-|·•]\s*Linktr\.?ee.*$/i, "")
+  name = name.replace(/\s*[-|·•]\s*Yelp.*$/i, "")
+  name = name.replace(/\s*[-|·•]\s*Tripadvisor.*$/i, "")
+  name = name.replace(/\s*[-|·•]\s*Google\s*Maps.*$/i, "")
+  name = name.replace(/\s*[-|·•]\s*Wanderboat.*$/i, "")
+  name = name.replace(/\s*[-|·•]\s*Pinterest.*$/i, "")
 
   // Remove IG handle from name: "Business Name (@handle)" → "Business Name"
   name = name.replace(/\s*\(?!.*\)\s*@[\w.]+\s*\)/g, "")  // don't touch valid parens
