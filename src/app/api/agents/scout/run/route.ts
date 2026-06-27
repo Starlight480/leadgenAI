@@ -6,30 +6,104 @@ const TAVILY_API_KEY = process.env.TAVILY_API_KEY
 // ─── Helpers ───
 
 function normalizePhone(phone: string): string | null {
-  const cleaned = phone.replace(/[\s\-()]/g, "")
-  if (cleaned.startsWith("+234")) return cleaned
-  if (cleaned.startsWith("0") && cleaned.length >= 11) return "+234" + cleaned.slice(1)
-  if (/^[789]\d{9}$/.test(cleaned)) return "+234" + cleaned
+  // Strip everything except digits and leading +
+  let cleaned = phone.replace(/[^\d+]/g, "")
+  // Handle +234(0)801... pattern: +234 followed by 0 then 10 digits
+  if (cleaned.startsWith("+2340") && cleaned.length >= 15) {
+    cleaned = "+234" + cleaned.slice(5) // remove the extra 0
+  }
+  if (cleaned.startsWith("+234")) {
+    if (cleaned.length === 14) return cleaned // +234 + 10 digits
+    // Maybe there were extra digits we stripped; just return if length is right
+    return cleaned.length >= 14 ? cleaned.slice(0, 14) : null
+  }
+  // If it starts with 234 (no +), treat as +234
+  if (cleaned.startsWith("234") && cleaned.length === 13) {
+    return "+" + cleaned
+  }
+  // If it starts with 0, it's local format: 0XXXXXXXXXX (11 digits)
+  if (cleaned.startsWith("0") && cleaned.length === 11) {
+    return "+234" + cleaned.slice(1)
+  }
+  // If it's 10 digits starting with 7, 8, or 9
+  if (/^[789]\d{9}$/.test(cleaned)) {
+    return "+234" + cleaned
+  }
   return null
 }
 
 function extractPhones(text: string): string[] {
-  const matches = text.match(/(?:\+234|0)[789][01]\d{8}/g) || []
-  return matches.map(normalizePhone).filter(Boolean) as string[]
+  // Match phone numbers with flexible formatting:
+  // +234 XXX XXX XXXX, 0801-234-5678, (0801) 234 5678, 2348012345678, etc.
+  // Strategy: find digit sequences that look like Nigerian phone numbers
+  const phonePattern = /(?:\+?\s*234\s*\(?\s*0?\s*\)?\s*|\b0)[789]\d[\s\-().]*\d[\s\-().]*\d[\s\-().]*\d[\s\-().]*\d[\s\-().]*\d[\s\-().]*\d[\s\-()]*\d/g
+  const loosePattern = /\+?234[789]\d{8,9}/g
+
+  const matches = new Set<string>()
+
+  // First pass: structured matches with separators
+  for (const m of text.match(phonePattern) || []) {
+    const norm = normalizePhone(m)
+    if (norm) matches.add(norm)
+  }
+
+  // Second pass: compact numbers like 08012345678 or +2348012345678
+  for (const m of text.match(loosePattern) || []) {
+    const norm = normalizePhone(m)
+    if (norm) matches.add(norm)
+  }
+
+  return Array.from(matches)
+}
+
+function extractWhatsApp(text: string): string | null {
+  // Look for WhatsApp-specific contact info
+  // Strategy: find 'whatsapp', 'wa', 'chat' near a phone number
+  const waPatterns = [
+    /whatsapp[\s:.\-]*(?:call|chat|message|us|number|link)?[\s:.\-]*(\+?[\d\s\-().]{10,20})/gi,
+    /(?:call|chat|message|reach)\s+on\s+whatsapp[\s:.\-]*(\+?[\d\s\-().]{10,20})/gi,
+    /wa[\s:.\-]*(\+?[\d\s\-().]{10,20})/gi,
+    /(\+?[\d\s\-().]{10,20})[\s\-]*(?:whatsapp|wa\b)/gi,
+  ]
+
+  for (const pattern of waPatterns) {
+    const match = pattern.exec(text)
+    if (match) {
+      const phone = normalizePhone(match[1])
+      if (phone) return phone
+    }
+  }
+
+  // Also check for wa.me links
+  const waMeMatch = text.match(/wa\.me\/(\d{10,15})/i)
+  if (waMeMatch) {
+    const phone = normalizePhone("+" + waMeMatch[1])
+    if (phone) return phone
+  }
+
+  return null
 }
 
 function extractInstagram(text: string): string | null {
-  // Match instagram.com/username or @username (but not @mentions that are clearly not IG)
   const urlMatch = text.match(/instagram\.com\/([a-zA-Z0-9_.]+)/i)
   if (urlMatch) return `@${urlMatch[1]}`
-  // Only match @handles that look like IG (alphanumeric, underscores, dots)
+  // Match @handles — but prefer ones near 'instagram' context
+  const igContextMatch = text.match(/instagram[\s:.\-]*@([a-zA-Z0-9_.]{3,30})\b/i)
+  if (igContextMatch) return `@${igContextMatch[1]}`
+  // Fallback: generic @handle
   const handleMatch = text.match(/@([a-zA-Z0-9_.]{3,30})\b/)
   return handleMatch ? `@${handleMatch[1]}` : null
 }
 
 function extractEmail(text: string): string | null {
-  const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
-  return match ? match[0] : null
+  // Skip common non-business emails
+  const match = text.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)
+  if (!match) return null
+  const email = match[0].toLowerCase()
+  // Filter out common junk/placeholder emails
+  if (email.includes("example.com") || email.includes("test.com") || email.includes("sentry.io")) return null
+  if (email.includes("noreply") || email.includes("no-reply") || email.includes("donotreply")) return null
+  return email
 }
 
 // Clean a business name extracted from search results
@@ -70,6 +144,7 @@ function cleanBusinessName(raw: string): string | null {
 interface TavilyResult {
   title?: string
   content?: string
+  raw_content?: string
   url?: string
 }
 
@@ -77,6 +152,7 @@ interface Candidate {
   business_name: string
   instagram: string | null
   phone: string | null
+  whatsapp: string | null
   email: string | null
   address: string | null
   has_website: boolean
@@ -88,7 +164,9 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
   const title = result.title || ""
   const content = result.content || ""
   const url = result.url || ""
-  const combined = `${title} ${content}`
+  // Use raw_content if available (full page text), fall back to content snippet
+  const rawContent = result.raw_content || ""
+  const combined = `${title} ${content} ${rawContent}`
 
   // Try to get business name from title
   let businessName = cleanBusinessName(title)
@@ -96,8 +174,14 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
 
   // Extract contact info from content
   const phones = extractPhones(combined)
+  const whatsapp = extractWhatsApp(combined)
   const instagram = extractInstagram(combined)
   const email = extractEmail(combined)
+
+  // Prefer WhatsApp number, fall back to extracted phone
+  const primaryPhone = whatsapp || phones[0] || null
+
+  console.log(`  [extract] "${businessName}": phones=${phones.length} whatsapp=${whatsapp ? "yes" : "no"} ig=${instagram || "none"} email=${email || "none"}`)
 
   // Check if this business has a website
   // If the URL is the business's own site (not a directory listing), it has a website
@@ -109,7 +193,8 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
   return {
     business_name: businessName,
     instagram,
-    phone: phones[0] || null,
+    phone: primaryPhone,
+    whatsapp,
     email,
     address: area ? `${area}, ${city}` : city,
     has_website: hasOwnWebsite,
@@ -127,7 +212,7 @@ async function tavilySearch(query: string): Promise<TavilyResult[]> {
       api_key: TAVILY_API_KEY,
       query,
       max_results: 10,
-      include_raw_content: false,
+      include_raw_content: true,
     }),
   })
   const data = await res.json()
@@ -169,12 +254,16 @@ export async function POST(request: NextRequest) {
     `${category} ${area} ${city} Nigeria phone number`,
     `${category} near ${area} ${city} instagram`,
     `best ${category} ${area} ${city} contact`,
+    `${category} ${area} ${city} whatsapp contact`,
+    `${category} ${area} ${city} no website`,
   ]
 
   try {
     // Run all searches in parallel
     const searchResults = await Promise.all(queries.map(q => tavilySearch(q)))
     const allResults = searchResults.flat()
+
+    console.log(`[scout] ${queries.length} queries returned ${allResults.length} total results`)
 
     // Deduplicate by URL
     const seen = new Set<string>()
@@ -192,15 +281,31 @@ export async function POST(request: NextRequest) {
       if (candidate) candidates.push(candidate)
     }
 
+    console.log(`[scout] Extracted ${candidates.length} candidates from ${uniqueResults.length} unique results`)
+    console.log(`[scout] With phone: ${candidates.filter(c => c.phone).length}, email: ${candidates.filter(c => c.email).length}, IG: ${candidates.filter(c => c.instagram).length}`)
+
     // Filter: no website, has at least one contact method, deduplicate by name
     const leadsToInsert = candidates
       .filter(c => !c.has_website)
       .filter(c => c.phone || c.email || c.instagram)
       .filter((c, i, arr) => {
-        const key = c.business_name.toLowerCase().replace(/[^a-z0-9]/g, "")
-        return arr.findIndex(a => a.business_name.toLowerCase().replace(/[^a-z0-9]/g, "") === key) === i
+        // Fuzzy dedup: normalize name by removing all non-alphanumeric, lowercasing
+        const nameKey = c.business_name.toLowerCase().replace(/[^a-z0-9]/g, "")
+        const nameMatch = arr.findIndex(a =>
+          a.business_name.toLowerCase().replace(/[^a-z0-9]/g, "") === nameKey
+        ) === i
+        // Also dedup by phone: same number = same business
+        if (c.phone) {
+          const phoneMatch = arr.findIndex(a =>
+            a.phone && a.phone === c.phone
+          ) === i
+          return nameMatch || phoneMatch // keep if either is unique (prefer phone dedup for cross-name dupes)
+        }
+        return nameMatch
       })
       .slice(0, campaign.target_count || 20)
+
+    console.log(`[scout] ${leadsToInsert.length} leads after dedup and filtering (no website + has contact)`)
 
     // Check for existing leads before inserting
     const newLeads: Array<Record<string, unknown>> = []
@@ -219,6 +324,7 @@ export async function POST(request: NextRequest) {
           area: area || null,
           address: lead.address,
           phone: lead.phone,
+          whatsapp: lead.whatsapp,
           email: lead.email,
           instagram: lead.instagram,
           has_website: false,
