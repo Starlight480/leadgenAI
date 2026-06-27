@@ -129,7 +129,7 @@ Portfolio: https://dami.builds`
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        "xiaomi/mimo-v2.5",
+        "deepseek/deepseek-chat-v3-0324",
         { temperature: 0.5, max_tokens: 2500 }
       )
     )
