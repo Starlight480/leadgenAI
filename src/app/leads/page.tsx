@@ -70,7 +70,7 @@ export default function LeadsPage() {
     dedupingInterval: 2000,
   })
 
-  const categories = [...new Set(leads.map((l) => l.category))]
+  const categories = ["all", ...["restaurant", "salon", "barbershop", "supermarket", "hotel", "pharmacy", "church", "other"]]
 
   const handleStatusChange = useCallback(
     async (leadId: string, newStatus: string) => {
@@ -153,8 +153,18 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Leads</h1>
-          <p className="text-sm text-text-muted mt-1">{leads.length} total leads</p>
+          <h1 className="text-2xl font-bold text-text-primary">
+            Leads
+            {categoryFilter !== "all" && (
+              <span className="text-lg text-accent ml-2">— {categoryFilter}</span>
+            )}
+          </h1>
+          <p className="text-sm text-text-muted mt-1">
+            {categoryFilter !== "all"
+              ? `${leads.length} ${categoryFilter}s`
+              : `${leads.length} total leads`
+            }
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -171,7 +181,48 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Category Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {categories.map((cat) => {
+          const count = cat === "all"
+            ? leads.length
+            : leads.filter((l) => l.category === cat).length
+          const isActive = categoryFilter === cat
+          const icons: Record<string, string> = {
+            all: "📊",
+            restaurant: "🍽️",
+            salon: "💇",
+            barbershop: "💈",
+            supermarket: "🛒",
+            hotel: "🏨",
+            pharmacy: "💊",
+            church: "⛪",
+            other: "📁",
+          }
+          if (cat !== "all" && count === 0) return null
+          return (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                isActive
+                  ? "bg-accent text-white shadow-md"
+                  : "bg-bg-surface border border-border-default text-text-secondary hover:bg-bg-hover"
+              }`}
+            >
+              <span>{icons[cat] || "📁"}</span>
+              <span className="capitalize">{cat}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                isActive ? "bg-white/20 text-white" : "bg-bg-primary text-text-muted"
+              }`}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Search + Status Filter */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
@@ -191,16 +242,6 @@ export default function LeadsPage() {
           <option value="all">All Status</option>
           {STATUS_FLOW.map((s) => (
             <option key={s.key} value={s.key}>{s.label}</option>
-          ))}
-        </select>
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-2 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm cursor-pointer focus:outline-none focus:border-accent"
-        >
-          <option value="all">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
       </div>
