@@ -204,7 +204,7 @@ Portfolio: https://dami.builds`
     }
 
     const { data: items, error: insertErr } = await supabase
-      .from("outreach_queue")
+      .from("outreach")
       .insert(outreachItems)
       .select("id, channel, status")
 
