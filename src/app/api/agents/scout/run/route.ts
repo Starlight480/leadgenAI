@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase"
+import { callLLM, type LLMMessage } from "@/lib/llm"
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY
 
@@ -280,6 +281,136 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
   }
 }
 
+// ─── LLM Candidate Filtering ───
+
+interface FilterResult {
+  index: number
+  keep: boolean
+  clean_name: string
+  confidence: number
+  reason: string
+}
+
+const FILTER_MODEL = "google/gemma-4-31b-it:free"
+const BATCH_SIZE = 8 // process candidates in batches to stay within token limits
+
+function buildFilterPrompt(candidates: Candidate[]): LLMMessage[] {
+  const candidateList = candidates.map((c, i) => ({
+    index: i,
+    business_name: c.business_name,
+    category: c.category,
+    instagram: c.instagram,
+    phone: c.phone,
+    whatsapp: c.whatsapp,
+    email: c.email,
+    address: c.address,
+    has_website: c.has_website,
+    source_url: c.source_url,
+    snippet: c.raw_content.substring(0, 200),
+  }))
+
+  return [
+    {
+      role: "system",
+      content: `You are a lead quality evaluator for a Nigerian business lead generation system.
+Your job is to filter out junk candidates and keep only real, contactable businesses.
+
+RULES FOR DISCARDING (keep: false):
+- Instagram/Facebook pages with no real business info (just a social profile)
+- Directory/listing pages (Yelp, TripAdvisor, Google Maps, YellowPages, etc.)
+- Articles, blog posts, news stories, or listicles ("Top 10 salons in Lagos")
+- Pages that are about the city/area, not a specific business
+- Generic names like "Hair Salon" or "Restaurant" with no distinguishing info
+- Businesses with NO contact method at all (no phone, no email, no WhatsApp, no Instagram handle with content)
+- Websites that are clearly aggregators or marketplaces
+
+RULES FOR KEEPING (keep: true):
+- Real businesses with a name and at least one contact method
+- Business Instagram pages that have a real business name (not just "@handle")
+- Websites that belong to a specific business
+
+CLEANING RULES:
+- Remove "- Instagram", "| Facebook", "(photos and videos)" etc from names
+- Remove location suffixes like "- Lagos", "· Abuja"
+- Remove trailing junk like "(42 reviews)", "4.5 stars"
+- The clean_name should be the business's real name only
+
+CONFIDENCE SCORE (0.0 to 1.0):
+- 0.9-1.0: Definitely a real business with good contact info
+- 0.7-0.8: Likely a real business, some details missing
+- 0.5-0.6: Might be a business, uncertain
+- Below 0.5: Probably not a real business lead
+
+You MUST return ONLY a JSON array, no markdown, no explanation outside the JSON.
+Format: [{"index": 0, "keep": true, "clean_name": "...", "confidence": 0.9, "reason": "..."}]`,
+    },
+    {
+      role: "user",
+      content: `Evaluate these ${candidates.length} candidates and return the JSON array.\n\n${JSON.stringify(candidateList, null, 2)}`,
+    },
+  ]
+}
+
+async function filterBatch(candidates: Candidate[]): Promise<FilterResult[]> {
+  const messages = buildFilterPrompt(candidates)
+  const response = await callLLM(messages, FILTER_MODEL, {
+    temperature: 0.1,
+    max_tokens: 4096,
+  })
+
+  // Parse the JSON response — handle markdown code blocks if present
+  let content = response.content.trim()
+  if (content.startsWith("```")) {
+    content = content.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "")
+  }
+
+  const parsed = JSON.parse(content)
+
+  // Validate it's an array
+  if (!Array.isArray(parsed)) {
+    throw new Error("LLM response is not an array")
+  }
+
+  return parsed as FilterResult[]
+}
+
+async function filterCandidatesWithLLM(candidates: Candidate[]): Promise<Candidate[]> {
+  if (candidates.length === 0) return candidates
+
+  const allResults: FilterResult[] = []
+
+  // Process in batches
+  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+    const batch = candidates.slice(i, i + BATCH_SIZE)
+    const batchResults = await filterBatch(batch)
+    allResults.push(...batchResults)
+  }
+
+  // Build a map of index → filter result
+  const resultMap = new Map<number, FilterResult>()
+  for (const result of allResults) {
+    resultMap.set(result.index, result)
+  }
+
+  // Filter and clean candidates
+  const filtered: Candidate[] = []
+  for (let i = 0; i < candidates.length; i++) {
+    const result = resultMap.get(i)
+    if (!result) continue // no result = discard
+
+    if (result.keep && result.confidence >= 0.5) {
+      // Apply the cleaned name from the LLM
+      const cleanedCandidate = { ...candidates[i] }
+      if (result.clean_name && result.clean_name.length >= 3) {
+        cleanedCandidate.business_name = result.clean_name
+      }
+      filtered.push(cleanedCandidate)
+    }
+  }
+
+  return filtered
+}
+
 // ─── Tavily Search ───
 
 async function tavilySearch(query: string): Promise<TavilyResult[]> {
@@ -383,10 +514,21 @@ export async function POST(request: NextRequest) {
       })
       .slice(0, campaign.target_count || 20)
 
+    // LLM filtering: validate candidates and clean business names
+    let filteredLeads = leadsToInsert
+    try {
+      const beforeCount = leadsToInsert.length
+      filteredLeads = await filterCandidatesWithLLM(leadsToInsert)
+      console.log(`LLM filter: ${beforeCount} candidates → ${filteredLeads.length} kept`)
+    } catch (llmError) {
+      // If LLM filtering fails, fall back to unfiltered candidates
+      console.warn("LLM filtering failed, using unfiltered candidates:", llmError)
+      filteredLeads = leadsToInsert
+    }
 
     // Check for existing leads before inserting
     const newLeads: Array<Record<string, unknown>> = []
-    for (const lead of leadsToInsert) {
+    for (const lead of filteredLeads) {
       const { data: existing } = await supabase
         .from("leads")
         .select("id")
@@ -452,6 +594,7 @@ export async function POST(request: NextRequest) {
         total_results: uniqueResults.length,
         candidates_found: candidates.length,
         with_contact: candidates.filter(c => c.phone || c.email || c.instagram).length,
+        llm_filtered_count: filteredLeads.length,
         leads_inserted: leadsFound,
       },
       success: true,
