@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase"
 import { callLLM } from "@/lib/llm"
 import nodemailer from "nodemailer"
+import dns from "dns"
+import { promisify } from "util"
+
+const resolveMx = promisify(dns.resolveMx)
 
 // Gmail SMTP transporter
 function getTransporter() {
@@ -34,6 +38,18 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
     }
   }
   throw new Error("unreachable")
+}
+
+// Validate email exists by checking MX records
+async function isValidEmail(email: string): Promise<boolean> {
+  try {
+    const domain = email.split("@")[1]
+    if (!domain) return false
+    const mxRecords = await resolveMx(domain)
+    return mxRecords && mxRecords.length > 0
+  } catch {
+    return false
+  }
 }
 
 // Template variable replacement
@@ -314,22 +330,31 @@ My Instagram: @dami.builds`;
 
       // Actually send email if SMTP is configured
       if (ch.channel === "email" && process.env.SMTP_USER && process.env.SMTP_PASS) {
-        try {
-          const transporter = getTransporter()
-          await transporter.sendMail({
-            from: `"Dami" <${process.env.SMTP_USER}>`,
-            to: ch.recipient,
-            subject: subject || "Let me show you something",
-            text: message,
-            html: message.replace(/\n/g, "<br>"),
-          })
-          item.status = "sent"
-          item.sent_at = new Date().toISOString()
-          emailsSent++
-        } catch (emailErr) {
-          console.error("Email send failed:", emailErr)
+        // Validate email domain has MX records before sending
+        const emailValid = await isValidEmail(ch.recipient)
+        if (!emailValid) {
+          console.log(`Email ${ch.recipient} failed MX check — marking as invalid`)
           item.status = "failed"
-          item.manual_reason = `Email send failed: ${emailErr instanceof Error ? emailErr.message : "unknown"}`
+          item.manual_reason = `Email domain "${ch.recipient.split("@")[1]}" has no MX records — email likely doesn't exist`
+          // Don't send — skip to next channel
+        } else {
+          try {
+            const transporter = getTransporter()
+            await transporter.sendMail({
+              from: `"Dami" <${process.env.SMTP_USER}>`,
+              to: ch.recipient,
+              subject: subject || "Let me show you something",
+              text: message,
+              html: message.replace(/\n/g, "<br>"),
+            })
+            item.status = "sent"
+            item.sent_at = new Date().toISOString()
+            emailsSent++
+          } catch (emailErr) {
+            console.error("Email send failed:", emailErr)
+            item.status = "failed"
+            item.manual_reason = `Email send failed: ${emailErr instanceof Error ? emailErr.message : "unknown"}`
+          }
         }
       }
 
