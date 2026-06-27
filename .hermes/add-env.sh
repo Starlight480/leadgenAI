@@ -1,0 +1,5 @@
+#!/bin/bash
+cd /data/data/com.termux/files/home/leadgen-os
+KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxY3l4YXZ3cGZmb3FyenlneGpwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjA3ODk2MCwiZXhwIjoyMDk3NjU0OTYwfQ.cIYGT2VI2duCHC9u8kYBzMjXyiloDx2dnshhUhvV9Wg'
+echo "y
+$KEY" | npx vercel env add SUPABASE_SERVICE_ROLE_KEY production
