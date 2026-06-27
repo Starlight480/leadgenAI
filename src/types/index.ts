@@ -97,6 +97,10 @@ export interface Project {
   staging_url: string | null
   vercel_project_id: string | null
   dev_notes: string | null
+  spec_html: string | null
+  deployed: boolean
+  deploy_url: string | null
+  deployed_at: string | null
   created_at: string
   updated_at: string
 }

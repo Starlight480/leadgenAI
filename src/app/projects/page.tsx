@@ -10,6 +10,11 @@ import {
   ChevronRight,
   X,
   GripVertical,
+  Eye,
+  Rocket,
+  Loader2,
+  Copy,
+  Check,
 } from "lucide-react"
 import type { Project } from "@/types"
 import { createBrowserClient } from "@/lib/supabase"
@@ -28,9 +33,12 @@ interface ProjectCardProps {
   nextStatus?: string
   nextLabel?: string
   onClick?: (project: Project) => void
+  onPreview?: (project: Project) => void
+  onDeploy?: (project: Project) => void
+  deploying?: boolean
 }
 
-function ProjectCard({ project, onMove, nextStatus, nextLabel, onClick }: ProjectCardProps) {
+function ProjectCard({ project, onMove, nextStatus, nextLabel, onClick, onPreview, onDeploy, deploying }: ProjectCardProps) {
   return (
     <div
       className="bg-bg-primary border border-border-default rounded-lg p-3 hover:border-accent transition-colors group cursor-pointer"
@@ -109,6 +117,41 @@ function ProjectCard({ project, onMove, nextStatus, nextLabel, onClick }: Projec
           </a>
         )}
       </div>
+
+      {/* Deploy buttons */}
+      {(onPreview || onDeploy) && (
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border-default/50">
+          {onPreview && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPreview(project) }}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-text-muted hover:text-accent hover:bg-bg-hover transition-colors"
+            >
+              <Eye size={11} /> Preview
+            </button>
+          )}
+          {onDeploy && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDeploy(project) }}
+              disabled={deploying}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-text-muted hover:text-success hover:bg-success/10 transition-colors disabled:opacity-50"
+            >
+              {deploying ? <Loader2 size={11} className="animate-spin" /> : <Rocket size={11} />}
+              {deploying ? "Deploying..." : "Deploy"}
+            </button>
+          )}
+          {project.deploy_url && (
+            <a
+              href={project.deploy_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-success hover:bg-success/10 transition-colors"
+            >
+              <ExternalLink size={11} /> Live
+            </a>
+          )}
+        </div>
+      )}
 
       {project.dev_notes && (
         <p className="text-[11px] text-text-muted mt-2 line-clamp-2 italic">
@@ -474,6 +517,8 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [deployingId, setDeployingId] = useState<string | null>(null)
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -522,6 +567,52 @@ export default function ProjectsPage() {
     } catch (err) {
       console.error("Failed to create project:", err)
     }
+  }
+
+  const handlePreview = async (project: Project) => {
+    try {
+      const res = await fetch("/api/projects/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: project.id }),
+      })
+      const data = await res.json()
+      if (data.html) {
+        const blob = new Blob([data.html], { type: "text/html" })
+        const url = URL.createObjectURL(blob)
+        window.open(url, "_blank")
+      }
+    } catch (err) {
+      console.error("Preview failed:", err)
+    }
+  }
+
+  const handleDeploy = async (project: Project) => {
+    if (!confirm(`Deploy ${project.business_name} to GitHub Pages?`)) return
+    setDeployingId(project.id)
+    try {
+      const res = await fetch("/api/projects/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_id: project.id }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        alert(`Deployed! Live at: ${data.url}`)
+        fetchProjects()
+      } else {
+        alert(`Deploy failed: ${data.error || "Unknown error"}`)
+      }
+    } catch (err) {
+      alert(`Deploy failed: ${err instanceof Error ? err.message : "Unknown error"}`)
+    }
+    setDeployingId(null)
+  }
+
+  const copyUrl = (url: string) => {
+    navigator.clipboard.writeText(url)
+    setCopiedUrl(url)
+    setTimeout(() => setCopiedUrl(null), 2000)
   }
 
   const getColumnProjects = (status: string) =>
@@ -598,6 +689,9 @@ export default function ProjectsPage() {
                           nextStatus={next?.status}
                           nextLabel={next?.label}
                           onClick={setSelectedProject}
+                          onPreview={handlePreview}
+                          onDeploy={handleDeploy}
+                          deploying={deployingId === project.id}
                         />
                       ))
                     )}
