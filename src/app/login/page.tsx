@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
@@ -8,23 +8,29 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
   const router = useRouter()
+
+  useEffect(() => {
+    // Check if already logged in
+    fetch("/api/auth/check").then(r => {
+      if (r.ok) router.push("/dashboard")
+      else setChecking(false)
+    }).catch(() => setChecking(false))
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
-
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       })
-
       if (res.ok) {
         router.push("/dashboard")
-        router.refresh()
       } else {
         setError("Invalid username or password")
       }
@@ -33,6 +39,8 @@ export default function LoginPage() {
     }
     setLoading(false)
   }
+
+  if (checking) return <div className="min-h-screen bg-bg-primary" />
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-primary">
@@ -43,7 +51,6 @@ export default function LoginPage() {
           </h1>
           <p className="text-sm text-text-muted mt-1">Sign in to continue</p>
         </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-text-muted mb-1">Username</label>
@@ -56,7 +63,6 @@ export default function LoginPage() {
               autoFocus
             />
           </div>
-
           <div>
             <label className="block text-xs font-semibold text-text-muted mb-1">Password</label>
             <input
@@ -67,11 +73,7 @@ export default function LoginPage() {
               placeholder="Enter password"
             />
           </div>
-
-          {error && (
-            <p className="text-xs text-error">{error}</p>
-          )}
-
+          {error && <p className="text-xs text-error">{error}</p>}
           <button
             type="submit"
             disabled={loading || !username || !password}
