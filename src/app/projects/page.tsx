@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   Code,
   Plus,
@@ -12,6 +12,7 @@ import {
   GripVertical,
 } from "lucide-react"
 import type { Project } from "@/types"
+import { createBrowserClient } from "@/lib/supabase"
 
 const STATUSES = [
   { key: "spec_written", label: "Spec Written", color: "text-info" },
@@ -26,11 +27,15 @@ interface ProjectCardProps {
   onMove: (id: string, newStatus: string) => void
   nextStatus?: string
   nextLabel?: string
+  onClick?: (project: Project) => void
 }
 
-function ProjectCard({ project, onMove, nextStatus, nextLabel }: ProjectCardProps) {
+function ProjectCard({ project, onMove, nextStatus, nextLabel, onClick }: ProjectCardProps) {
   return (
-    <div className="bg-bg-primary border border-border-default rounded-lg p-3 hover:border-accent transition-colors group">
+    <div
+      className="bg-bg-primary border border-border-default rounded-lg p-3 hover:border-accent transition-colors group cursor-pointer"
+      onClick={() => onClick?.(project)}
+    >
       <div className="flex items-start justify-between mb-2">
         <h4 className="text-sm font-semibold text-text-primary leading-tight">
           {project.business_name}
@@ -110,6 +115,188 @@ function ProjectCard({ project, onMove, nextStatus, nextLabel }: ProjectCardProp
           {project.dev_notes}
         </p>
       )}
+    </div>
+  )
+}
+
+
+/* ─── Project Detail Modal ─── */
+
+function ProjectDetailModal({ project, onClose }: { project: Project; onClose: () => void }) {
+  const [spec, setSpec] = useState<import("@/types").Spec | null>(null)
+  const [specLoading, setSpecLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchSpec = async () => {
+      if (!project.spec_id) { setSpecLoading(false); return }
+      setSpecLoading(true)
+      const supabase = createBrowserClient()
+      const { data } = await supabase
+        .from("specs")
+        .select("*")
+        .eq("id", project.spec_id)
+        .single()
+      setSpec(data)
+      setSpecLoading(false)
+    }
+    fetchSpec()
+  }, [project.spec_id])
+
+  const pages = spec?.pages as Record<string, unknown> | null
+  const colorPalette = spec?.color_palette as Record<string, string> | null
+  const content = spec?.content as Record<string, unknown> | null
+  const services = (content?.services as string[]) || []
+
+  return (
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] bg-bg-surface border border-border-default rounded-xl shadow-2xl overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border-default sticky top-0 bg-bg-surface z-10">
+          <div>
+            <h2 className="text-lg font-bold text-text-primary">{project.business_name}</h2>
+            <p className="text-xs text-text-muted">{project.category || "No category"} — {project.status?.replace(/_/g, " ")}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-bg-hover transition-colors">
+            <X size={18} className="text-text-muted" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* URLs */}
+          <div className="flex flex-wrap gap-3">
+            {project.live_url && (
+              <a href={project.live_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-success/30 bg-success/10 text-success text-xs font-medium hover:bg-success/20 transition-colors">
+                <ExternalLink size={12} /> Live Site
+              </a>
+            )}
+            {project.staging_url && (
+              <a href={project.staging_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border-default text-text-secondary text-xs font-medium hover:bg-bg-hover transition-colors">
+                <ExternalLink size={12} /> Staging
+              </a>
+            )}
+            {project.repo_url && (
+              <a href={project.repo_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border-default text-text-secondary text-xs font-medium hover:bg-bg-hover transition-colors">
+                <GitBranch size={12} /> Repository
+              </a>
+            )}
+          </div>
+
+          {/* Pricing */}
+          {(project.price_ngn || project.price_usd) && (
+            <div className="bg-bg-primary rounded-lg p-3 border border-border-default">
+              <p className="text-[10px] uppercase text-text-muted font-semibold mb-1">Pricing</p>
+              <div className="flex items-center gap-4">
+                {project.price_ngn && <span className="text-lg font-bold text-success">₦{project.price_ngn.toLocaleString()}</span>}
+                {project.price_usd && <span className="text-lg font-bold text-success">${project.price_usd}</span>}
+                {project.deposit_paid && <span className="text-[10px] px-2 py-0.5 rounded bg-success/10 text-success border border-success/20">Deposit Paid</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Spec Details */}
+          {specLoading ? (
+            <div className="text-center py-6 text-text-muted text-sm">Loading spec...</div>
+          ) : spec ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase text-text-muted font-semibold">Site Type:</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">{spec.site_type}</span>
+              </div>
+
+              {pages && Object.keys(pages).length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase text-text-muted font-semibold mb-2">Pages</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {Object.entries(pages).map(([name, detail]) => (
+                      <div key={name} className="text-xs px-2 py-1.5 rounded bg-bg-primary border border-border-default text-text-secondary">
+                        <span className="font-medium text-text-primary">{name}</span>
+                        {typeof detail === "string" && <span className="text-text-muted ml-1">— {detail}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {colorPalette && Object.keys(colorPalette).length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase text-text-muted font-semibold mb-2">Color Palette</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(colorPalette).map(([name, hex]) => (
+                      <div key={name} className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full border border-border-default" style={{ backgroundColor: hex }} />
+                        <span className="text-[11px] text-text-muted">{name}: {hex}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {content && (
+                <div className="space-y-3">
+                  <p className="text-[10px] uppercase text-text-muted font-semibold">Content</p>
+                  {typeof content.hero_headline === "string" && (
+                    <div>
+                      <p className="text-[10px] text-text-muted font-semibold">Hero Headline</p>
+                      <p className="text-sm text-text-primary font-medium">{content.hero_headline}</p>
+                    </div>
+                  )}
+                  {typeof content.about_text === "string" && (
+                    <div>
+                      <p className="text-[10px] text-text-muted font-semibold">About</p>
+                      <p className="text-xs text-text-secondary leading-relaxed">{content.about_text.slice(0, 200)}{content.about_text.length > 200 ? "..." : ""}</p>
+                    </div>
+                  )}
+                  {services.length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-text-muted font-semibold mb-1">Services</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {services.map((s, i) => (
+                          <span key={i} className="text-[11px] px-2 py-0.5 rounded-full border border-border-default text-text-secondary">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {typeof content.contact_text === "string" && (
+                    <div>
+                      <p className="text-[10px] text-text-muted font-semibold">Contact</p>
+                      <p className="text-xs text-text-secondary">{content.contact_text}</p>
+                    </div>
+                  )}
+                  {typeof content.cta_text === "string" && (
+                    <div>
+                      <p className="text-[10px] text-text-muted font-semibold">CTA</p>
+                      <span className="text-xs px-3 py-1 rounded-md bg-accent text-white">{content.cta_text}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {spec.tech_stack && spec.tech_stack.length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase text-text-muted font-semibold mb-1.5">Tech Stack</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {spec.tech_stack.map((tech) => (
+                      <span key={tech} className="text-[11px] px-2 py-0.5 rounded-full bg-info/10 text-info border border-info/20">{tech}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-text-muted text-sm">No spec found for this project.</div>
+          )}
+
+          {project.dev_notes && (
+            <div>
+              <p className="text-[10px] uppercase text-text-muted font-semibold mb-1">Dev Notes</p>
+              <p className="text-xs text-text-secondary leading-relaxed italic">{project.dev_notes}</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -286,6 +473,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -409,6 +597,7 @@ export default function ProjectsPage() {
                           onMove={handleMove}
                           nextStatus={next?.status}
                           nextLabel={next?.label}
+                          onClick={setSelectedProject}
                         />
                       ))
                     )}
@@ -425,6 +614,12 @@ export default function ProjectsPage() {
         onClose={() => setShowCreate(false)}
         onSave={handleCreate}
       />
+      {selectedProject && (
+        <ProjectDetailModal
+          project={selectedProject}
+          onClose={() => setSelectedProject(null)}
+        />
+      )}
     </div>
   )
 }

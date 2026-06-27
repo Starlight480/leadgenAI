@@ -97,10 +97,10 @@ RULES:
 - Reference the business by name
 - Reference something specific from their profile
 - Keep it short and clear (under 100 words)
-- Include Damien's contact info
+- Include Dami's contact info
 - Make the ask clear: "Can I show you a quick mockup?"
 - Tone: professional but warm, not salesy
-- End with: — Damien
+- End with: — Dami
 
 OUTPUT FORMAT (JSON):
 {
@@ -120,7 +120,7 @@ Summary: ${profile?.business_summary || "N/A"}
 Pitch: ${profile?.website_pitch || "N/A"}
 Pages recommended: ${profile?.recommended_pages?.join(", ") || "N/A"}
 Price: ₦${(profile?.price_recommendation_ngn || 0).toLocaleString()}
-Damien's phone: ${process.env.SMTP_USER || "Available on request"}
+Dami's phone: ${process.env.SMTP_USER || "Available on request"}
 Portfolio: @dami.builds on Instagram`
 
     const response = await withRetry(() =>
@@ -197,7 +197,7 @@ Portfolio: @dami.builds on Instagram`
         try {
           const transporter = getTransporter()
           await transporter.sendMail({
-            from: `"Damien — LeadGen OS" <${process.env.SMTP_USER}>`,
+            from: `"Dami — LeadGen OS" <${process.env.SMTP_USER}>`,
             to: ch.recipient,
             subject: subject || "Let me show you something",
             text: message,

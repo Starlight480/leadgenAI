@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import useSWR from "swr"
 import {
   Search,
@@ -321,10 +321,27 @@ function LeadDetailDrawer({
   const [notesSaved, setNotesSaved] = useState(false)
   const [runningAgent, setRunningAgent] = useState<string | null>(null)
   const [agentResult, setAgentResult] = useState<string | null>(null)
+  const [profile, setProfile] = useState<import("@/types").BusinessProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
   const st = STATUS_MAP[lead.status]
   const next = onNextStatus(lead.status)
   const prev = onPrevStatus(lead.status)
-
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setProfileLoading(true)
+      const supabase = createBrowserClient()
+      const { data } = await supabase
+        .from("business_profiles")
+        .select("*")
+        .eq("lead_id", lead.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      setProfile(data)
+      setProfileLoading(false)
+    }
+    fetchProfile()
+  }, [lead.id])
   const runAgent = async (agent: string) => {
     setRunningAgent(agent)
     setAgentResult(null)
@@ -616,6 +633,91 @@ function LeadDetailDrawer({
               <p className={`text-xs mt-2 ${agentResult.includes("✅") ? "text-success" : "text-error"}`}>
                 {agentResult}
               </p>
+            )}
+          </div>
+
+          {/* Business Profile */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-2">Business Profile</p>
+            {profileLoading ? (
+              <div className="p-4 text-center text-text-muted text-xs">Loading profile...</div>
+            ) : profile ? (
+              <div className="space-y-3">
+                {profile.business_summary && (
+                  <div>
+                    <p className="text-[10px] uppercase text-text-muted font-semibold mb-1">Summary</p>
+                    <p className="text-sm text-text-secondary leading-relaxed">{profile.business_summary}</p>
+                  </div>
+                )}
+                {profile.target_audience && (
+                  <div>
+                    <p className="text-[10px] uppercase text-text-muted font-semibold mb-1">Target Audience</p>
+                    <p className="text-sm text-text-secondary">{profile.target_audience}</p>
+                  </div>
+                )}
+                {profile.estimated_size && (
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] uppercase text-text-muted font-semibold">Size:</p>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent capitalize">{profile.estimated_size}</span>
+                  </div>
+                )}
+                {profile.website_pitch && (
+                  <div>
+                    <p className="text-[10px] uppercase text-text-muted font-semibold mb-1">Website Pitch</p>
+                    <p className="text-sm text-text-secondary leading-relaxed">{profile.website_pitch}</p>
+                  </div>
+                )}
+                {profile.recommended_pages && profile.recommended_pages.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase text-text-muted font-semibold mb-1.5">Recommended Pages</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {profile.recommended_pages.map((page) => (
+                        <span key={page} className="text-[11px] px-2 py-0.5 rounded-full border border-border-default text-text-secondary">{page}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(profile.color_notes || profile.tone_notes) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {profile.color_notes && (
+                      <div>
+                        <p className="text-[10px] uppercase text-text-muted font-semibold mb-1">Colors</p>
+                        <p className="text-xs text-text-secondary">{profile.color_notes}</p>
+                      </div>
+                    )}
+                    {profile.tone_notes && (
+                      <div>
+                        <p className="text-[10px] uppercase text-text-muted font-semibold mb-1">Tone</p>
+                        <p className="text-xs text-text-secondary">{profile.tone_notes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {(profile.price_recommendation_ngn || profile.price_recommendation_usd) && (
+                  <div className="bg-bg-primary rounded-md p-3 border border-border-default">
+                    <p className="text-[10px] uppercase text-text-muted font-semibold mb-1">Price Recommendation</p>
+                    <div className="flex items-center gap-3">
+                      {profile.price_recommendation_ngn && (
+                        <span className="text-sm font-semibold text-success">₦{profile.price_recommendation_ngn.toLocaleString()}</span>
+                      )}
+                      {profile.price_recommendation_usd && (
+                        <span className="text-sm font-semibold text-success">${profile.price_recommendation_usd.toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 bg-bg-primary rounded-lg border border-border-default text-center">
+                <p className="text-sm text-text-muted mb-2">No profile yet — run Scribe</p>
+                <button
+                  onClick={() => runAgent("scribe")}
+                  disabled={!!runningAgent}
+                  className="px-3 py-1.5 rounded-md bg-accent text-white text-xs font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+                >
+                  ✍️ Run Scribe
+                </button>
+              </div>
             )}
           </div>
 
