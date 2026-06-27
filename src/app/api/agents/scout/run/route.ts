@@ -183,11 +183,13 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
 
   console.log(`  [extract] "${businessName}": phones=${phones.length} whatsapp=${whatsapp ? "yes" : "no"} ig=${instagram || "none"} email=${email || "none"}`)
 
-  // Check if this business has a website
-  // If the URL is the business's own site (not a directory listing), it has a website
-  const isDirectory = /yelp|tripadvisor|google\.com|facebook\.com|instagram\.com|linktr\.ee|wanderboat|openrice|zomato|eatout/i.test(url)
-  const hasOwnWebsite = !isDirectory && (
-    url.includes(".com") || url.includes(".ng") || url.includes(".co")
+  // Check if this business has its own website
+  // If the URL is from a directory/social platform, the business probably doesn't have its own site
+  const isDirectory = /yelp|tripadvisor|google\.com|facebook\.com|instagram\.com|linktr\.ee|wanderboat|openrice|zomato|eatout|foursquare|justdial|yellowpages|opendi|showmore|eatoutco|whatsapp\.com|twitter\.com|x\.com/i.test(url)
+  // Also flag Wikipedia, Quora, Reddit, Medium, blog posts about the business
+  const isArticle = /wikipedia|quora|reddit|medium\.com|substack|blogspot|wordpress\.com/i.test(url)
+  const hasOwnWebsite = !isDirectory && !isArticle && (
+    url.includes(".com") || url.includes(".ng") || url.includes(".co") || url.includes(".org")
   )
 
   return {
