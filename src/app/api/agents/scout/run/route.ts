@@ -110,35 +110,100 @@ function extractEmail(text: string): string | null {
 function cleanBusinessName(raw: string): string | null {
   let name = raw.trim()
 
-  // Remove common page title junk
-  name = name.replace(/\s*[\|–—-]\s*(Home\s*Page|Official\s*Site|Website|Contact\s*Us).*$/i, "")
+  // === INSTAGRAM / FACEBOOK / SOCIAL PLATFORM JUNK ===
+  // Remove "- Instagram", "| Instagram", "· Instagram", "(photos and videos)" etc
+  name = name.replace(/\s*[-|·]\s*Instagram\s*(photos?\s*and\s*videos?)?$/i, "")
+  name = name.replace(/\s*[-|·]\s*Facebook\s*(page|profile|photos?)?$/i, "")
+  name = name.replace(/\s*[-|·]\s*TikTok\s*(video|profile)?$/i, "")
+  name = name.replace(/\s*[-|·]\s*Twitter\s*(profile)?$/i, "")
+  name = name.replace(/\s*[-|·]\s*YouTube\s*(channel)?$/i, "")
+  name = name.replace(/\s*[-|·]\s*LinkedIn\s*(profile|company)?$/i, "")
+  name = name.replace(/\s*[-|·]\s*Linktr\.?ee.*$/i, "")
+  name = name.replace(/\s*[-|·]\s*Yelp.*$/i, "")
+  name = name.replace(/\s*[-|·]\s*Tripadvisor.*$/i, "")
+  name = name.replace(/\s*[-|·]\s*Google\s*Maps.*$/i, "")
+  name = name.replace(/\s*[-|·]\s*Wanderboat.*$/i, "")
+  name = name.replace(/\s*[-|·]\s*Pinterest.*$/i, "")
+
+  // Remove IG handle from name: "Business Name (@handle)" → "Business Name"
+  name = name.replace(/\s*\(?!.*\)\s*@[\w.]+\s*\)/g, "")  // don't touch valid parens
+  name = name.replace(/\s*\(@[\w.]+\)/g, "")
+  name = name.replace(/\s*@\([\w.]+\)/g, "")
+
+  // Remove "· Location" suffix from social platforms: "Business · Lagos"
+  name = name.replace(/\s*·\s*(Lagos|Abuja|Nigeria|Ajah|Lekki|V\.?I\.?|Victoria Island|Port Harcourt|Ikeja).*$/i, "")
+
+  // === COMMON PAGE TITLE JUNK ===
+  name = name.replace(/\s*[\|–—-]\s*(Home\s*Page|Official\s*Site|Website|Contact\s*Us|Opening\s*Hours|Phone\s*Number|Address|Map|Directions|Reviews|Menu|Book\s*Now|Order\s*Online|Reservations?).*$/i, "")
   name = name.replace(/^(Home\s*Page|Official\s*Site)\s*[\|–—-]\s*/i, "")
-  name = name.replace(/\s*[\|–—]\s*Instagram.*$/i, "")
-  name = name.replace(/\s*[\|–—]\s*Facebook.*$/i, "")
-  name = name.replace(/\s*[\|–—]\s*Linktr.*$/i, "")
-  name = name.replace(/\s*[\|–—]\s*Yelp.*$/i, "")
-  name = name.replace(/\s*[\|–—]\s*Tripadvisor.*$/i, "")
-  name = name.replace(/\s*[\|–—]\s*Google\s*Maps.*$/i, "")
-  name = name.replace(/\s*[\|–—]\s*Wanderboat.*$/i, "")
 
-  // Remove trailing junk patterns
-  name = name.replace(/\s*[-–—]\s*(Lagos|Nigeria|Abuja|Port Harcourt).*$/i, "")
+  // === TRAILING LOCATION/REVIEW JUNK ===
+  name = name.replace(/\s*[-–—]\s*(Lagos|Nigeria|Abuja|Port Harcourt|Ajah|Lekki|Victoria Island).*$/i, "")
   name = name.replace(/\s*\(\d+\+?\s*reviews?\).*$/i, "")
-  name = name.replace(/\s*\d+\.\d\s*stars?.*$/i, "")
+  name = name.replace(/\s*\d+\.?\d*\s*stars?.*$/i, "")
+  name = name.replace(/\s*·\s*\d+\+?\s*reviews?.*$/i, "")
 
-  // Remove leading junk
-  name = name.replace(/^(Top\s+\d+|Best\s+\d+|List\s+of)\s+.*$/i, "")
+  // === LEADING JUNK ===
+  name = name.replace(/^(Top\s+\d+|Best\s+\d+|List\s+of|All\s+\d+)\s+.*$/i, "")
   name = name.replace(/^(Home\s*Page|Official\s*Website|Contact)\s*.*$/i, "")
+  name = name.replace(/^\d+\s*[-–—]\s*/i, "")  // "10 - Best Salons..." → "Best Salons..."
 
-  // Remove lines that are clearly not business names
-  if (/^(Top|Best|List|How|What|Why|Guide|Review)/i.test(name)) return null
-  if (/^(Home|About|Contact|Menu|Services|FAQ)/i.test(name)) return null
+  // === CLEARLY NOT BUSINESS NAMES ===
+  if (/^(Top|Best|List|How|What|Why|Guide|Review|Find|Where|Compare)/i.test(name)) return null
+  if (/^(Home|About|Contact|Menu|Services|FAQ|Blog|News|Careers)/i.test(name)) return null
   if (name.length < 3 || name.length > 60) return null
-  if (/^\d+$/.test(name)) return null
+  if (/^[\d\s]+$/.test(name)) return null
+  if (name.toLowerCase() === "instagram" || name.toLowerCase() === "facebook") return null
+  if (name.toLowerCase() === "tiktok" || name.toLowerCase() === "twitter") return null
   if (name.includes("cookie") || name.includes("sign in") || name.includes("log in")) return null
   if (name.includes("http") || name.includes("www.")) return null
+  if (/^\d+\+?\s*(salon|barber|restaurant|hotel)/i.test(name)) return null  // "10+ Best..."
 
+  // Final trim
+  name = name.replace(/^[\s\-–—·|]+/, "").replace(/[\s\-–—·|]+$/, "")
+
+  if (name.length < 3) return null
   return name
+}
+
+// Detect the actual business category from name and content
+function detectCategory(name: string, content: string, campaignCategory: string): string {
+  const combined = `${name} ${content}`.toLowerCase()
+
+  // Barbershop keywords
+  if (/\b(barber|barbershop|barbing|haircut|fade|lineup|clipper|taper)\b/i.test(combined))
+    return "barbershop"
+
+  // Salon keywords (hair/beauty, NOT barbers)
+  if (/\b(salon|hairdress|hairstylist|braids?|twist|locs?|weave|wig|nail|pedicure|manicure|facial|beauty\s*spa|nail\s*spa|beauty\s*bar|cosmetic|esthetic|makeup|lash|brow)\b/i.test(combined))
+    return "salon"
+
+  // Restaurant keywords
+  if (/\b(restaurant|cafe|kitchen|grill|bar\b|lounge|bistro|diner|food|eatery|chops|canteen|bakery|patisserie|ice\s*cream|shisha|cocktail|brunch)\b/i.test(combined))
+    return "restaurant"
+
+  // Hotel keywords
+  if (/\b(hotel|motel|inn|resort|lodge|guest\s*house|hostel|airbnb|shortlet|apartment\s*hotel)\b/i.test(combined))
+    return "hotel"
+
+  // Pharmacy keywords
+  if (/\b(pharmacy|pharmacies|chemist|drugstore|medical|clinic|hospital|health)\b/i.test(combined))
+    return "pharmacy"
+
+  // Church/religious keywords
+  if (/\b(church|mosque|temple|cathedral|parish|ministry|worship|congregation)\b/i.test(combined))
+    return "church"
+
+  // Supermarket/retail keywords
+  if (/\b(supermarket|grocery|store|shop|market|mart|retail|boutique|fashion)\b/i.test(combined))
+    return "supermarket"
+
+  // Gym/fitness keywords
+  if (/\b(gym|fitness|crossfit|yoga|wellness|spa\b|massage)\b/i.test(combined))
+    return "salon"  // group with salon as "beauty/wellness"
+
+  // Default: use campaign category
+  return campaignCategory
 }
 
 interface TavilyResult {
@@ -150,6 +215,7 @@ interface TavilyResult {
 
 interface Candidate {
   business_name: string
+  category: string
   instagram: string | null
   phone: string | null
   whatsapp: string | null
@@ -157,6 +223,7 @@ interface Candidate {
   address: string | null
   has_website: boolean
   source_url: string
+  raw_content: string
 }
 
 // Extract a single business candidate from a Tavily result
@@ -193,6 +260,7 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
 
   return {
     business_name: businessName,
+    category: "",  // will be set at insert time
     instagram,
     phone: primaryPhone,
     whatsapp,
@@ -200,6 +268,7 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
     address: area ? `${area}, ${city}` : city,
     has_website: hasOwnWebsite,
     source_url: url,
+    raw_content: rawContent.substring(0, 500),
   }
 }
 
@@ -317,9 +386,10 @@ export async function POST(request: NextRequest) {
         .limit(1)
 
       if (!existing || existing.length === 0) {
+        const detectedCat = detectCategory(lead.business_name, lead.raw_content, category)
         newLeads.push({
           business_name: lead.business_name,
-          category,
+          category: detectedCat,
           city,
           area: area || null,
           address: lead.address,
