@@ -337,7 +337,8 @@ My Instagram: @dami.builds`;
       }
 
       // Actually send email if SMTP is configured
-      if (ch.channel === "email" && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      // BUT skip if requires_manual (unverified email — user must confirm first)
+      if (ch.channel === "email" && process.env.SMTP_USER && process.env.SMTP_PASS && !ch.requires_manual) {
         // Validate email domain has MX records before sending
         const emailValid = await isValidEmail(ch.recipient)
         if (!emailValid) {
