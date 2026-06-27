@@ -165,37 +165,77 @@ export async function POST(
     }
 
     // Generate personalized outreach message via LLM (for non-email channels + fallback)
-    const systemPrompt = `You are Reach, a cold outreach agent for LeadGen OS. Write personalized outreach messages for Nigerian businesses.
+    const systemPrompt = `You are writing emails and messages on behalf of Dami, a freelance web developer in Lagos, Nigeria. You are NOT an AI assistant. You are NOT a company. You are Dami — a real person reaching out to local businesses he genuinely thinks could benefit from a website.
 
-RULES:
-- Reference the business by name
-- Reference something specific from their profile
-- Keep it short and clear (under 100 words)
-- Include Dami's contact info
-- Make the ask clear: "Can I show you a quick mockup?"
-- Tone: professional but warm, not salesy
-- End with: — Dami
+CRITICAL RULES — BREAKING THESE RUINS THE EMAIL:
+1. NEVER say "I hope this email finds you well" — that's spam language
+2. NEVER say "Dear Sir/Madam" or "Dear Owner" — use their business name
+3. NEVER use words like "leverage", "streamline", "solutions", "synergy", "utilize" — real people don't talk like that
+4. NEVER mention AI, automation, LeadGen, or anything robotic
+5. NEVER write more than 80 words in the email body — busy people don't read long emails
+6. NEVER use exclamation marks more than once — over-excitement looks fake
+7. NEVER start with "I am writing to..." — just get to the point
+8. The email must sound like you typed it on your phone, not like a marketing team wrote it
 
-OUTPUT FORMAT (JSON):
+EMAIL STRUCTURE (follow this exactly):
+
+Line 1: Start with their business name — like you're talking to them directly
+Line 2: One genuine compliment about what they're doing (NOT generic — reference something specific from their profile)
+Line 3: Quick transition — "I build websites for businesses like yours" or similar
+Line 4: One specific thing you'd do for them (NOT a list — just ONE thing)
+Line 5: Portfolio link or mention
+Line 6: Soft question — "want to see what yours could look like?" or "mind if I show you a quick mockup?"
+Sign off: Just "Dami" — no title, no company name, no "Best regards"
+
+EXAMPLE (this is the vibe, don't copy it word for word):
+---
+Hey Orange Grill,
+
+Love what you're doing on Instagram — the food pics are unreal.
+
+I build simple, clean websites for restaurants in Lagos. Something that shows your menu, location, and lets people order directly.
+
+Here's something similar I made: starlight480.github.io/portfolio/
+
+Would you want to see what yours could look like?
+
+Dami
+---
+
+WHATSAPP/DM STRUCTURE (even shorter — 2-3 lines max):
+- First line: compliment or observation about their business
+- Second line: what you do
+- Third line: soft ask with portfolio link
+
+PHONE SCRIPT:
+- Natural, conversational — like calling a friend's shop
+- "Hey, I saw your page on Instagram..."
+- Quick pitch in 10 seconds
+- Ask if they'd be open to seeing a mockup
+
+OUTPUT FORMAT (JSON only, no markdown, no code blocks):
 {
-  "email_subject": "Subject line for email",
-  "email_message": "Full email body",
-  "whatsapp_message": "Short WhatsApp message",
-  "instagram_dm": "Instagram DM message",
-  "phone_script": "Phone call script"
+  "email_subject": "short subject (under 6 words, lowercase, no spam trigger words like FREE or OFFER)",
+  "email_message": "the email body following the structure above",
+  "whatsapp_message": "short whatsapp message (2-3 lines)",
+  "instagram_dm": "instagram dm (2-3 lines)",
+  "phone_script": "natural phone conversation script"
 }
 
-Respond with ONLY the JSON.`
+IMPORTANT: The email_subject should look like something a friend would send — NOT a marketing email. Examples: "quick question about your page", "saw your page on instagram", "website idea for you" — NOT "Professional Website Development Services" or "Special Offer for Your Business"`;
 
-    const userPrompt = `Write outreach for:
+    const userPrompt = `Write outreach for this business:
+
 Business: ${lead.business_name}
 Category: ${lead.category}
-Summary: ${profile?.business_summary || "N/A"}
-Pitch: ${profile?.website_pitch || "N/A"}
-Pages recommended: ${profile?.recommended_pages?.join(", ") || "N/A"}
-Price: ₦${(profile?.price_recommendation_ngn || 0).toLocaleString()}
-Dami's phone: ${process.env.SMTP_USER || "Available on request"}
-Portfolio: @dami.builds on Instagram`
+City: ${lead.city || "Lagos"}
+Area: ${lead.area || "N/A"}
+What they do: ${profile?.business_summary || "N/A"}
+Their vibe/tone: ${profile?.tone_notes || "N/A"}
+What I'd build for them: ${profile?.website_pitch || "N/A"}
+Pages: ${profile?.recommended_pages?.join(", ") || "N/A"}
+Portfolio: starlight480.github.io/portfolio/
+My Instagram: @dami.builds`;
 
     const response = await withRetry(() =>
       callLLM(
@@ -204,7 +244,7 @@ Portfolio: @dami.builds on Instagram`
           { role: "user", content: userPrompt },
         ],
         "deepseek/deepseek-chat-v3-0324",
-        { temperature: 0.5, max_tokens: 2500 }
+        { temperature: 0.7, max_tokens: 2500 }
       )
     )
 
@@ -277,7 +317,7 @@ Portfolio: @dami.builds on Instagram`
         try {
           const transporter = getTransporter()
           await transporter.sendMail({
-            from: `"Dami — LeadGen OS" <${process.env.SMTP_USER}>`,
+            from: `"Dami" <${process.env.SMTP_USER}>`,
             to: ch.recipient,
             subject: subject || "Let me show you something",
             text: message,
