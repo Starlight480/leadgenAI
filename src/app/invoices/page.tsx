@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import {
   Receipt,
   Plus,
@@ -166,28 +167,18 @@ function CreateInvoiceModal({ open, onClose, onSave }: CreateInvoiceModalProps) 
 }
 
 export default function InvoicesPage() {
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [filter, setFilter] = useState<string>("all")
 
-  const fetchInvoices = useCallback(async () => {
-    try {
+  const { data: invoices = [], isLoading: loading, mutate } = useSWR<Invoice[]>(
+    "invoices",
+    async () => {
       const res = await fetch("/api/invoices")
-      if (res.ok) {
-        const data = await res.json()
-        setInvoices(data)
-      }
-    } catch (err) {
-      console.error("Failed to fetch invoices:", err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchInvoices()
-  }, [fetchInvoices])
+      if (!res.ok) return []
+      return res.json()
+    },
+    { refreshInterval: 30000, revalidateOnFocus: true }
+  )
 
   const handleCreate = async (invoice: Partial<Invoice>) => {
     try {
@@ -196,7 +187,7 @@ export default function InvoicesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invoice),
       })
-      if (res.ok) fetchInvoices()
+      if (res.ok) mutate()
     } catch (err) {
       console.error("Failed to create invoice:", err)
     }
@@ -212,7 +203,7 @@ export default function InvoicesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       })
-      if (res.ok) fetchInvoices()
+      if (res.ok) mutate()
     } catch (err) {
       console.error("Failed to update invoice:", err)
     }
@@ -221,7 +212,7 @@ export default function InvoicesPage() {
   const handleDelete = async (id: string) => {
     try {
       const res = await fetch(`/api/invoices/${id}`, { method: "DELETE" })
-      if (res.ok) fetchInvoices()
+      if (res.ok) mutate()
     } catch (err) {
       console.error("Failed to delete invoice:", err)
     }

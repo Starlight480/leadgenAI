@@ -36,6 +36,54 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
   throw new Error("unreachable")
 }
 
+// Template variable replacement
+function replaceTemplateVars(
+  text: string,
+  vars: { business_name: string; city: string; category: string; sender_name: string }
+): string {
+  return text
+    .replace(/\{\{business_name\}\}/g, vars.business_name)
+    .replace(/\{\{city\}\}/g, vars.city)
+    .replace(/\{\{category\}\}/g, vars.category)
+    .replace(/\{\{sender_name\}\}/g, vars.sender_name)
+}
+
+// Create 3 auto follow-up reminders after email is sent
+async function createFollowUps(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  leadId: string,
+  emailSentAt: Date
+) {
+  const followUps = [
+    {
+      lead_id: leadId,
+      type: "email_followup",
+      due_date: new Date(emailSentAt.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(), // Day 3
+      notes: "Polite follow-up: checking if they saw the email",
+      status: "pending",
+    },
+    {
+      lead_id: leadId,
+      type: "email_followup",
+      due_date: new Date(emailSentAt.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Day 7
+      notes: "Second follow-up: offer to show mockup",
+      status: "pending",
+    },
+    {
+      lead_id: leadId,
+      type: "email_followup",
+      due_date: new Date(emailSentAt.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(), // Day 14
+      notes: "Final follow-up: last chance before closing",
+      status: "pending",
+    },
+  ]
+
+  const { error } = await supabase.from("follow_ups").insert(followUps)
+  if (error) {
+    console.error("Failed to create follow-ups:", error)
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ leadId: string }> }
@@ -90,7 +138,33 @@ export async function POST(
       return NextResponse.json({ error: "No contact channels available" }, { status: 400 })
     }
 
-    // Generate personalized outreach message via LLM
+    // --- Template-based email approach ---
+    let emailSubject: string | null = null
+    let emailMessage: string | null = null
+
+    // Try to fetch a matching email template for this lead's category
+    const { data: template } = await supabase
+      .from("email_templates")
+      .select("*")
+      .eq("category", lead.category)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    if (template) {
+      // Use template with variable replacement
+      const vars = {
+        business_name: lead.business_name,
+        city: lead.city || "your area",
+        category: lead.category,
+        sender_name: "Dami",
+      }
+      emailSubject = replaceTemplateVars(template.subject, vars)
+      emailMessage = replaceTemplateVars(template.body, vars)
+    }
+
+    // Generate personalized outreach message via LLM (for non-email channels + fallback)
     const systemPrompt = `You are Reach, a cold outreach agent for LeadGen OS. Write personalized outreach messages for Nigerian businesses.
 
 RULES:
@@ -166,8 +240,14 @@ Portfolio: @dami.builds on Instagram`
 
       switch (ch.channel) {
         case "email":
-          message = messages.email_message
-          subject = messages.email_subject
+          // Use template if available, otherwise use LLM-generated message
+          if (emailSubject && emailMessage) {
+            subject = emailSubject
+            message = emailMessage
+          } else {
+            message = messages.email_message
+            subject = messages.email_subject
+          }
           break
         case "whatsapp":
           message = messages.whatsapp_message
@@ -229,6 +309,9 @@ Portfolio: @dami.builds on Instagram`
         .from("leads")
         .update({ status: "contacted", pipeline_stage: "outreach_sent" })
         .eq("id", leadId)
+
+      // Auto-create 3 follow-up reminders after successful email send
+      await createFollowUps(supabase, leadId, new Date())
     }
 
     // Log event
@@ -239,10 +322,11 @@ Portfolio: @dami.builds on Instagram`
       lead_id: leadId,
       agent: "reach",
       event_type: "outreach_created",
-      summary: `Reach created ${items?.length} outreach items for "${lead.business_name}" — ${emailsSent} emails sent, ${manualCount} manual`,
+      summary: `Reach created ${items?.length} outreach items for "${lead.business_name}" — ${emailsSent} emails sent, ${manualCount} manual${template ? " (template: " + template.name + ")" : ""}`,
       details: {
         items: items?.map((i) => ({ id: i.id, channel: i.channel, status: i.status })),
         emails_sent: emailsSent,
+        template_used: template?.name || null,
       },
       duration_ms: duration,
       success: true,
@@ -252,6 +336,7 @@ Portfolio: @dami.builds on Instagram`
       outreach_count: items?.length || 0,
       emails_sent: emailsSent,
       manual_required: manualCount,
+      template_used: template?.name || null,
       items,
     })
   } catch (error) {

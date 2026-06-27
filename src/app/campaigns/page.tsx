@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import { Search, Plus, X, Play, Pause, Clock, CheckCircle, AlertCircle } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import type { Campaign } from "@/types"
@@ -19,23 +20,18 @@ const statusConfig: Record<string, { icon: typeof Clock; color: string }> = {
 }
 
 export default function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
 
-  const supabase = createBrowserClient()
-
-  const fetchCampaigns = async () => {
-    setLoading(true)
-    const { data } = await supabase.from("campaigns").select("*").order("created_at", { ascending: false })
-    setCampaigns(data || [])
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    fetchCampaigns()
-  }, [])
+  const { data: campaigns = [], isLoading: loading, mutate } = useSWR<Campaign[]>(
+    "campaigns",
+    async () => {
+      const supabase = createBrowserClient()
+      const { data } = await supabase.from("campaigns").select("*").order("created_at", { ascending: false })
+      return data || []
+    },
+    { refreshInterval: 15000, revalidateOnFocus: true }
+  )
 
   const handleRunCampaign = async (form: { category: string; city: string; area: string; radius: number }) => {
     setRunning(true)
@@ -53,7 +49,7 @@ export default function CampaignsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       alert(`Campaign complete! Found ${data.leads_found} leads, processed ${data.leads_processed}.`)
-      fetchCampaigns()
+      mutate()
     } catch (err) {
       alert(`Campaign failed: ${err instanceof Error ? err.message : String(err)}`)
     }

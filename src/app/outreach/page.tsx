@@ -5,6 +5,10 @@ import { Send, Copy, CheckCircle, Phone, MessageCircle } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import type { OutreachItem } from "@/types"
 
+type OutreachWithLead = OutreachItem & {
+  leads?: { business_name: string; phone: string | null; email: string | null }
+}
+
 const channelIcons: Record<string, typeof Send> = {
   email: Send,
   whatsapp: MessageCircle,
@@ -30,18 +34,18 @@ export default function OutreachPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true)
     let query = supabase
-      .from("outreach_queue")
-      .select("*")
+      .from("outreach")
+      .select("*, leads!inner(business_name, phone, email)")
       .order("created_at", { ascending: true })
 
     if (tab === "manual") {
-      query = query.eq("requires_manual", true).eq("status", "manual_required")
+      query = query.eq("status", "pending")
     } else {
       query = query.eq("status", "sent")
     }
 
     const { data } = await query
-    setItems(data || [])
+    setItems((data || []) as OutreachWithLead[])
     setLoading(false)
   }, [tab])
 
@@ -56,7 +60,7 @@ export default function OutreachPage() {
   }
 
   const markDone = async (id: string) => {
-    await supabase.from("outreach_queue").update({ status: "manual_done" }).eq("id", id)
+    await supabase.from("outreach").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", id)
     fetchItems()
   }
 
@@ -118,14 +122,12 @@ export default function OutreachPage() {
                   <Icon size={16} className={`${channelColors[item.channel] || "text-text-muted"} mt-0.5 shrink-0`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-text-primary">{item.recipient}</span>
+                      <span className="text-sm font-medium text-text-primary">{(item as OutreachWithLead).leads?.business_name || "Unknown"}</span>
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-accent/10 text-accent border border-accent/20">
                         {item.channel.replace(/_/g, " ")}
                       </span>
                     </div>
-                    {item.subject && (
-                      <p className="text-xs text-text-muted mt-1">Subject: {item.subject}</p>
-                    )}
+
                     <div className="mt-2 bg-bg-primary rounded-md p-3 text-sm text-text-secondary whitespace-pre-wrap">
                       {item.message}
                     </div>

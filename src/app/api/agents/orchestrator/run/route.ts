@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
         })
         if (!scribeRes.ok) throw new Error('Scribe failed')
+        await supabase.from('leads').update({ status: 'profiled' }).eq('id', lead.id)
 
         // Dev
         const devRes = await fetch(`${baseUrl}/api/agents/dev/build/${lead.id}`, {
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({ path: 'website' }),
         })
         if (!devRes.ok) throw new Error('Dev failed')
+        await supabase.from('leads').update({ status: 'spec_written' }).eq('id', lead.id)
 
         // Reach
         const reachRes = await fetch(`${baseUrl}/api/agents/reach/process/${lead.id}`, {
@@ -116,6 +118,7 @@ export async function POST(request: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
         })
         if (!reachRes.ok) throw new Error('Reach failed')
+        await supabase.from('leads').update({ status: 'contacted' }).eq('id', lead.id)
 
         processed++
       } catch (err) {

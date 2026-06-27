@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import { Activity, CheckCircle, AlertCircle, Clock, RefreshCw } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import type { PipelineEvent } from "@/types"
@@ -15,32 +16,25 @@ const agentColors: Record<string, string> = {
 }
 
 export default function PipelinePage() {
-  const [events, setEvents] = useState<PipelineEvent[]>([])
   const [filter, setFilter] = useState("all")
-  const [loading, setLoading] = useState(true)
 
-  const supabase = createBrowserClient()
-
-  const fetchEvents = useCallback(async () => {
-    setLoading(true)
-    let query = supabase
-      .from("pipeline_events")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100)
-
-    if (filter !== "all") {
-      query = query.eq("agent", filter)
-    }
-
-    const { data } = await query
-    setEvents(data || [])
-    setLoading(false)
-  }, [filter])
-
-  useEffect(() => {
-    fetchEvents()
-  }, [fetchEvents])
+  const { data: events = [], isLoading: loading, mutate } = useSWR<PipelineEvent[]>(
+    `pipeline-events-${filter}`,
+    async () => {
+      const supabase = createBrowserClient()
+      let query = supabase
+        .from("pipeline_events")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100)
+      if (filter !== "all") {
+        query = query.eq("agent", filter)
+      }
+      const { data } = await query
+      return data || []
+    },
+    { refreshInterval: 10000, revalidateOnFocus: true }
+  )
 
   return (
     <div className="space-y-6">
@@ -50,7 +44,7 @@ export default function PipelinePage() {
           <p className="text-sm text-text-muted mt-1">Real-time agent activity feed</p>
         </div>
         <button
-          onClick={fetchEvents}
+          onClick={() => mutate()}
           className="px-3 py-2 rounded-md border border-border-default text-text-secondary text-sm hover:bg-bg-hover transition-colors flex items-center gap-2"
         >
           <RefreshCw size={14} />

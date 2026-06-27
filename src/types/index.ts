@@ -104,19 +104,10 @@ export interface Project {
 export interface OutreachItem {
   id: string
   lead_id: string
-  channel: 'email' | 'whatsapp' | 'instagram_dm' | 'phone_call'
-  status: 'pending' | 'sent' | 'failed' | 'manual_required' | 'manual_done'
-  subject: string | null
+  channel: string
   message: string
-  recipient: string
-  requires_manual: boolean
-  manual_reason: string | null
+  status: string
   sent_at: string | null
-  opened_at: string | null
-  response_status: 'responded' | 'interested' | 'not_interested' | 'no_response' | null
-  response_text: string | null
-  response_at: string | null
-  agent: string
   created_at: string
 }
 
@@ -173,5 +164,25 @@ export interface RentNaijaListing {
   pushed_to_rentnaija: boolean
   rentnaija_listing_id: string | null
   pushed_at: string | null
+  created_at: string
+}
+
+export interface FollowUp {
+  id: string
+  lead_id: string
+  type: string
+  due_date: string
+  status: "pending" | "completed" | "skipped"
+  notes: string | null
+  created_at: string
+}
+
+export interface EmailTemplate {
+  id: string
+  category: string
+  name: string
+  subject: string
+  body: string
+  is_active: boolean
   created_at: string
 }
