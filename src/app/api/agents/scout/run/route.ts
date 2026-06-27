@@ -384,6 +384,25 @@ export async function POST(request: NextRequest) {
       leads_found: leadsFound,
       candidates_scanned: candidates.length,
       queries_run: queries.length,
+      debug: {
+        total_results: uniqueResults.length,
+        unique_results: uniqueResults.length,
+        with_website: candidates.filter(c => c.has_website).length,
+        without_website: candidates.filter(c => !c.has_website).length,
+        with_phone: candidates.filter(c => c.phone).length,
+        with_email: candidates.filter(c => c.email).length,
+        with_instagram: candidates.filter(c => c.instagram).length,
+        with_whatsapp: candidates.filter(c => c.whatsapp).length,
+        with_any_contact: candidates.filter(c => c.phone || c.email || c.instagram).length,
+        sample_candidates: candidates.slice(0, 5).map(c => ({
+          name: c.business_name,
+          has_website: c.has_website,
+          phone: c.phone,
+          email: c.email,
+          instagram: c.instagram,
+          source_url: c.source_url?.substring(0, 80),
+        })),
+      },
     })
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error)
