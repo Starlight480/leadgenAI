@@ -15,5 +15,43 @@
     "src/app/api/agents/scout/run/**/*.ts": {
       "maxDuration": 60
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/api/leads(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=15, stale-while-revalidate=60" }
+      ]
+    },
+    {
+      "source": "/api/campaigns(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=15, stale-while-revalidate=60" }
+      ]
+    },
+    {
+      "source": "/api/projects(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=30, stale-while-revalidate=120" }
+      ]
+    },
+    {
+      "source": "/api/invoices(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=30, stale-while-revalidate=120" }
+      ]
+    },
+    {
+      "source": "/api/templates(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=300, stale-while-revalidate=600" }
+      ]
+    },
+    {
+      "source": "/api/followups(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=60, stale-while-revalidate=300" }
+      ]
+    }
+  ]
 }

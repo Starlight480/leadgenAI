@@ -65,9 +65,12 @@ export default function LeadsPage() {
 
   const swrKey = `/api/leads?status=${statusFilter}&category=${categoryFilter}&search=${search}`
   const { data: leads = [], isLoading: loading, mutate } = useSWR(swrKey, fetcher, {
+    dedupingInterval: 5000,
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
-    dedupingInterval: 2000,
+    keepPreviousData: true,
+    errorRetryCount: 3,
+    refreshInterval: 20000,
   })
 
   const categories = ["all", ...["restaurant", "salon", "barbershop", "supermarket", "hotel", "pharmacy", "church", "other"]]
