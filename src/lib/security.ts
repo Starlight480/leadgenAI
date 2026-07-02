@@ -34,6 +34,10 @@ const FORBIDDEN_CHARS = /[<>"'`&;|\\\/\x00-\x1f]/
 // Maximum lengths
 const MAX_USERNAME_LENGTH = 50
 const MAX_PASSWORD_LENGTH = 128
+const MAX_EMAIL_LENGTH = 254
+
+// Email validation
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export interface SanitizeResult {
   valid: boolean
@@ -47,7 +51,7 @@ export interface SanitizeResult {
  */
 export function sanitizeLoginInput(
   value: string,
-  field: 'username' | 'password'
+  field: 'username' | 'password' | 'email'
 ): SanitizeResult {
   if (typeof value !== 'string') {
     return { valid: false, error: 'Invalid input type' }
@@ -62,9 +66,14 @@ export function sanitizeLoginInput(
   }
 
   // Length check
-  const maxLen = field === 'username' ? MAX_USERNAME_LENGTH : MAX_PASSWORD_LENGTH
+  const maxLen = field === 'email' ? MAX_EMAIL_LENGTH : field === 'username' ? MAX_USERNAME_LENGTH : MAX_PASSWORD_LENGTH
   if (trimmed.length > maxLen) {
     return { valid: false, error: `${field} is too long` }
+  }
+
+  // For email: validate format
+  if (field === 'email' && !EMAIL_REGEX.test(trimmed)) {
+    return { valid: false, error: 'Please enter a valid email address' }
   }
 
   // Check for dangerous patterns (XSS, SQL injection, command injection)
@@ -77,8 +86,8 @@ export function sanitizeLoginInput(
     }
   }
 
-  // For username: reject special characters entirely
-  if (field === 'username' && FORBIDDEN_CHARS.test(trimmed)) {
+  // For username/email: reject special characters entirely
+  if ((field === 'username' || field === 'email') && FORBIDDEN_CHARS.test(trimmed)) {
     return {
       valid: false,
       error: 'Username contains invalid characters',
