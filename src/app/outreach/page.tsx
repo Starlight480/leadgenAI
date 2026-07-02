@@ -45,21 +45,31 @@ export default function OutreachPage() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
-    let query = supabase
-      .from("outreach")
-      .select("*, leads!inner(business_name, phone, email)")
-      .order("created_at", { ascending: true })
+    try {
+      let query = supabase
+        .from("outreach")
+        .select("*, leads!inner(business_name, phone, email)")
+        .order("created_at", { ascending: true })
 
-    if (tab === "manual") {
-      query = query.eq("requires_manual", true).eq("status", "pending")
-    } else if (tab === "sent") {
-      query = query.eq("status", "sent")
-    } else {
-      query = query.eq("status", "replied")
+      if (tab === "manual") {
+        query = query.eq("requires_manual", true).eq("status", "pending")
+      } else if (tab === "sent") {
+        query = query.eq("status", "sent")
+      } else {
+        query = query.eq("status", "replied")
+      }
+
+      const { data, error } = await query
+      if (error) {
+        console.error("Failed to fetch outreach:", error)
+        setItems([])
+      } else {
+        setItems((data || []) as OutreachWithLead[])
+      }
+    } catch (err) {
+      console.error("Outreach fetch error:", err)
+      setItems([])
     }
-
-    const { data } = await query
-    setItems((data || []) as OutreachWithLead[])
     setLoading(false)
   }, [tab])
 

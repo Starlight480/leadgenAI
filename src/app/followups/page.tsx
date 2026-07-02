@@ -102,12 +102,22 @@ export default function FollowUpsPage() {
 
   const fetchFollowups = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from("follow_ups")
-      .select("*, leads!inner(id, business_name, category, city, phone, email, status)")
-      .eq("status", tab)
-      .order("due_date", { ascending: true })
-    setFollowups((data || []) as FollowUp[])
+    try {
+      const { data, error } = await supabase
+        .from("follow_ups")
+        .select("*, leads!inner(id, business_name, category, city, phone, email, status)")
+        .eq("status", tab)
+        .order("due_date", { ascending: true })
+      if (error) {
+        console.error("Failed to fetch follow-ups:", error)
+        setFollowups([])
+      } else {
+        setFollowups((data || []) as FollowUp[])
+      }
+    } catch (err) {
+      console.error("Follow-ups fetch error:", err)
+      setFollowups([])
+    }
     setLoading(false)
   }, [tab])
 
