@@ -2,9 +2,11 @@
 
 import { useState } from "react"
 import useSWR from "swr"
+import { motion } from "framer-motion"
 import { LayoutDashboard, Users, Search, Code, Send, Receipt, Activity, Zap, Loader2, Clock } from "lucide-react"
 import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase"
+import { staggerContainer } from "@/lib/animations"
 
 const quickActions = [
   { label: "View Leads", href: "/leads", icon: Users },
@@ -188,9 +190,20 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <motion.div
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-5 gap-4"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
         {statCards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-bg-surface border border-border-default rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <motion.div
+            key={label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="bg-bg-surface border border-border-default rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
             <div className="flex items-center gap-2 mb-3">
               <Icon size={15} className={color} />
               <span className="text-[11px] uppercase tracking-wider text-text-muted font-semibold">{label}</span>
@@ -198,27 +211,35 @@ export default function DashboardPage() {
             <p className="text-3xl font-bold text-text-primary tracking-tight">
               {loading ? "—" : value}
             </p>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* This Week */}
       <div>
         <h2 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">This Week</h2>
         <div className="bg-bg-surface border border-border-default rounded-xl p-5 shadow-sm">
           <div className="flex items-end gap-3 h-36">
-            {weekActivity.map((day) => {
+            {weekActivity.map((day, idx) => {
               const maxCount = Math.max(...weekActivity.map(d => d.count), 1)
               const height = Math.max((day.count / maxCount) * 100, 4)
               return (
-                <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5">
+                <motion.div
+                  key={day.date}
+                  className="flex-1 flex flex-col items-center gap-1.5"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut", delay: idx * 0.05 }}
+                >
                   <span className="text-[11px] text-text-muted font-medium">{day.count}</span>
-                  <div
-                    className="w-full rounded-t-md bg-accent/25 transition-all duration-300 hover:bg-accent/40"
-                    style={{ height: `${height}%` }}
+                  <motion.div
+                    className="w-full rounded-t-md bg-accent/25 hover:bg-accent/40 transition-colors"
+                    initial={{ height: 0 }}
+                    animate={{ height: `${height}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 + idx * 0.05 }}
                   />
                   <span className="text-[11px] text-text-muted font-medium">{day.label}</span>
-                </div>
+                </motion.div>
               )
             })}
           </div>
@@ -231,15 +252,21 @@ export default function DashboardPage() {
         <div className="lg:col-span-2">
           <h2 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {quickActions.map(({ label, href, icon: Icon }) => (
-              <Link
+            {quickActions.map(({ label, href, icon: Icon }, idx) => (
+              <motion.div
                 key={href}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut", delay: 0.1 + idx * 0.05 }}
+              >
+              <Link
                 href={href}
                 className="bg-bg-surface border border-border-default rounded-xl p-5 hover:border-accent/40 hover:bg-bg-hover transition-all duration-200 flex items-center gap-3 shadow-sm hover:shadow-md group"
               >
                 <Icon size={18} className="text-accent group-hover:scale-110 transition-transform duration-150" />
                 <span className="text-sm font-medium text-text-primary">{label}</span>
               </Link>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -320,9 +347,20 @@ export default function DashboardPage() {
               <p className="text-sm text-text-muted">No activity yet. Run a campaign or use agent buttons on a lead.</p>
             </div>
           ) : (
-            <div className="divide-y divide-border-default">
+            <motion.div
+              className="divide-y divide-border-default"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
               {events.slice(0, 10).map((event, i) => (
-                <div key={i} className="px-5 py-3.5 flex items-center gap-3 hover:bg-bg-hover/50 transition-colors">
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut", delay: i * 0.05 }}
+                  className="px-5 py-3.5 flex items-center gap-3 hover:bg-bg-hover/50 transition-colors"
+                >
                   <span className="text-lg w-7 text-center flex-shrink-0">
                     {AGENT_ICONS[event.agent] || "⚙️"}
                   </span>
@@ -333,9 +371,9 @@ export default function DashboardPage() {
                   <span className="text-[11px] text-text-muted whitespace-nowrap">
                     {new Date(event.created_at).toLocaleTimeString()}
                   </span>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

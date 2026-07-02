@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import useSWR from "swr"
+import { motion } from "framer-motion"
 import { Activity, CheckCircle, AlertCircle, Clock, RefreshCw } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import type { PipelineEvent } from "@/types"
@@ -70,7 +71,12 @@ export default function PipelinePage() {
       </div>
 
       {/* Events list */}
-      <div className="space-y-3">
+      <motion.div
+        className="space-y-3"
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
+      >
         {loading ? (
           <div className="bg-bg-surface border border-border-default rounded-xl p-10 text-center text-text-muted text-sm shadow-sm">
             Loading events…
@@ -82,8 +88,11 @@ export default function PipelinePage() {
           </div>
         ) : (
           events.map(event => (
-            <div
+            <motion.div
               key={event.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
               className="bg-bg-surface border border-border-default rounded-xl p-4 flex items-start gap-4 hover:border-border-focus hover:shadow-sm transition-all duration-150"
             >
               {/* Agent badge */}
@@ -112,10 +121,10 @@ export default function PipelinePage() {
               ) : (
                 <AlertCircle size={18} className="text-error mt-0.5 shrink-0" />
               )}
-            </div>
+            </motion.div>
           ))
         )}
-      </div>
+      </motion.div>
     </div>
   )
 }

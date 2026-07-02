@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { Loader2 } from "lucide-react"
 import { sanitizeLoginInput } from "@/lib/security"
@@ -10,13 +11,21 @@ export default function RootLayoutClient({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
   const [auth, setAuth] = useState<boolean | null>(null)
 
   useEffect(() => {
+    // Skip auth check on public pages
+    if (pathname === "/") return
     fetch("/api/auth/check")
       .then(r => setAuth(r.ok))
       .catch(() => setAuth(false))
-  }, [])
+  }, [pathname])
+
+  // Public landing page — render directly, no auth gate
+  if (pathname === "/") {
+    return <>{children}</>
+  }
 
   if (auth === null) {
     return <div className="flex min-h-screen items-center justify-center bg-bg-primary">

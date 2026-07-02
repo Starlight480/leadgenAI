@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import useSWR from "swr"
+import { motion, AnimatePresence } from "framer-motion"
 import { Search, Plus, X, Play, Pause, Clock, CheckCircle, AlertCircle } from "lucide-react"
 import { createBrowserClient } from "@/lib/supabase"
 import type { Campaign } from "@/types"
@@ -74,7 +75,12 @@ export default function CampaignsPage() {
       </div>
 
       {/* Campaign List */}
-      <div className="space-y-4">
+      <motion.div
+        className="space-y-4"
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
+      >
         {loading ? (
           <div className="bg-bg-surface border border-border-default rounded-xl p-10 text-center text-text-muted text-sm shadow-sm">
             Loading campaigns…
@@ -88,7 +94,13 @@ export default function CampaignsPage() {
           campaigns.map(c => {
             const { icon: StatusIcon, color } = statusConfig[c.status] || statusConfig.running
             return (
-              <div key={c.id} className="bg-bg-surface border border-border-default rounded-xl p-5 hover:border-border-focus hover:shadow-sm transition-all duration-150 shadow-sm">
+              <motion.div
+                key={c.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="bg-bg-surface border border-border-default rounded-xl p-5 hover:border-border-focus hover:shadow-sm transition-all duration-150 shadow-sm"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <StatusIcon size={18} className={color} />
@@ -109,20 +121,23 @@ export default function CampaignsPage() {
                     {c.status}
                   </span>
                 </div>
-              </div>
+              </motion.div>
             )
           })
         )}
-      </div>
+      </motion.div>
 
       {/* Campaign Form Modal */}
+      <AnimatePresence>
       {showForm && (
         <CampaignForm
+          key="campaign-form"
           onClose={() => setShowForm(false)}
           onRun={handleRunCampaign}
           running={running}
         />
       )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -145,8 +160,21 @@ function CampaignForm({
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-bg-surface border border-border-default rounded-2xl shadow-2xl">
+      <motion.div
+        className="absolute inset-0 bg-black/40"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={onClose}
+      />
+      <motion.div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-bg-surface border border-border-default rounded-2xl shadow-2xl"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-default">
           <h2 className="text-lg font-bold text-text-primary">New Campaign</h2>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-hover transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
@@ -224,7 +252,7 @@ function CampaignForm({
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import useSWR from "swr"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   Search,
   Download,
@@ -277,11 +278,14 @@ export default function LeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {leads.map((lead) => {
+                {leads.map((lead, idx) => {
                   const st = STATUS_MAP[lead.status]
                   return (
-                    <tr
+                    <motion.tr
                       key={lead.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut", delay: idx * 0.03 }}
                       onClick={() => setSelectedLead(lead)}
                       className="border-b border-border-default/50 hover:bg-bg-hover/50 transition-colors cursor-pointer border-l-[3px]"
                       style={{ borderLeftColor: st?.color || "#1a2840" }}
@@ -314,7 +318,7 @@ export default function LeadsPage() {
                       <td className="px-5 py-4 text-xs text-text-muted hidden md:table-cell">
                         {new Date(lead.created_at).toLocaleDateString()}
                       </td>
-                    </tr>
+                    </motion.tr>
                   )
                 })}
               </tbody>
@@ -324,8 +328,10 @@ export default function LeadsPage() {
       )}
 
       {/* Detail Drawer */}
+      <AnimatePresence>
       {selectedLead && (
         <LeadDetailDrawer
+          key={selectedLead.id}
           lead={selectedLead}
           onClose={() => setSelectedLead(null)}
           onStatusChange={handleStatusChange}
@@ -335,6 +341,7 @@ export default function LeadsPage() {
           onPrevStatus={getPrevStatus}
         />
       )}
+      </AnimatePresence>
 
       {/* Add Lead Modal */}
       {showAddForm && <AddLeadModal onClose={() => setShowAddForm(false)} onAdded={() => mutate()} />}
@@ -446,8 +453,21 @@ function LeadDetailDrawer({
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-[520px] bg-bg-surface border-l border-border-default shadow-2xl flex flex-col overflow-y-auto">
+      <motion.div
+        className="absolute inset-0 bg-black/40"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={onClose}
+      />
+      <motion.div
+        className="absolute right-0 top-0 h-full w-full max-w-[520px] bg-bg-surface border-l border-border-default shadow-2xl flex flex-col overflow-y-auto"
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border-default sticky top-0 bg-bg-surface z-10">
           <div className="min-w-0">
@@ -799,7 +819,7 @@ function LeadDetailDrawer({
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
