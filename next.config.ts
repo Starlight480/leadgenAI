@@ -4,6 +4,16 @@ const nextConfig: NextConfig = {
   // Enable gzip/brotli compression
   compress: true,
 
+  // Allow external images
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
+  },
+
   // Cache static assets aggressively (JS, CSS, images)
   async headers() {
     return [

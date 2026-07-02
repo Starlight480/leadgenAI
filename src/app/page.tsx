@@ -30,18 +30,22 @@ import {
   Users,
   Quote,
 } from "lucide-react"
-import Image from "next/image"
+import {
+  AnimatedPipeline,
+  DashboardMock,
+  StepIllustration,
+  DataGrid,
+  PipelineFlow,
+  CtaBackground,
+  FeatureScoutIllustration,
+  FeaturePipelineIllustration,
+} from "@/components/landing-visuals"
 
 /* ═══════════════════════════════════════════════════════════════
    DATA
    ═══════════════════════════════════════════════════════════════ */
 
-const IMAGES = {
-  dashboard: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80",
-  business: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80",
-  lagos: "https://images.unsplash.com/photo-1618828665011-0abd9714b7e4?w=800&q=80",
-  office: "https://images.unsplash.com/photo-1556742049-0cfed4f6a44d?w=800&q=80",
-}
+
 
 const HERO_WORDS = ["Find.", "Profile.", "Build.", "Deploy."]
 
@@ -50,25 +54,25 @@ const STEPS = [
     icon: Search,
     label: "Scout",
     desc: "Discovers businesses without websites in your target area",
-    image: IMAGES.lagos,
+    step: "scout" as const,
   },
   {
     icon: PenTool,
     label: "Scribe",
     desc: "Profiles each business and creates a custom offer",
-    image: IMAGES.business,
+    step: "scribe" as const,
   },
   {
     icon: Code2,
     label: "Dev",
     desc: "Generates a professional website in minutes",
-    image: IMAGES.dashboard,
+    step: "dev" as const,
   },
   {
     icon: Send,
     label: "Reach",
     desc: "Sends personalised outreach via email or WhatsApp",
-    image: IMAGES.office,
+    step: "reach" as const,
   },
 ]
 
@@ -315,13 +319,10 @@ function ImageRevealSection({ reduced }: { reduced: boolean }) {
             style={reduced ? {} : { clipPath, opacity }}
             className="relative aspect-[16/9] md:aspect-[21/9]"
           >
-            <Image
-              src={IMAGES.dashboard}
-              alt="LeadGen OS dashboard showing pipeline metrics and business profiles"
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 1200px"
-            />
+            {/* Animated pipeline visualization instead of stock photo */}
+            <div className="absolute inset-0 bg-[#0a0a0e]">
+              <PipelineFlow className="w-full h-full" />
+            </div>
             {/* Overlay gradient */}
             <div className="absolute inset-0 bg-gradient-to-r from-[#0c0c10] via-[#0c0c10]/60 to-transparent" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c10] via-transparent to-[#0c0c10]/40" />
@@ -549,15 +550,10 @@ export default function LandingPage() {
         ref={heroRef}
         className="relative min-h-screen flex items-center overflow-hidden pt-16"
       >
-        {/* Subtle grid background */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(129,140,248,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(129,140,248,0.3) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
-        />
+        {/* Animated data grid background */}
+        <DataGrid />
+        {/* Animated pipeline visualization */}
+        <AnimatedPipeline />
         {/* Radial fade so grid doesn't show at edges */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -642,7 +638,7 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* Right: Dashboard image with parallax */}
+          {/* Right: Dashboard mock + animated pipeline */}
           <motion.div
             className="relative hidden lg:block"
             initial={reduced ? { opacity: 1, x: 0 } : { opacity: 0, x: 40 }}
@@ -650,19 +646,10 @@ export default function LandingPage() {
             transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
           >
             <motion.div
-              className="relative rounded-xl overflow-hidden border border-[#2a2a36] shadow-2xl shadow-black/40"
+              className="relative"
               style={reduced ? {} : { y: heroImageY }}
             >
-              <Image
-                src={IMAGES.dashboard}
-                alt="LeadGen OS dashboard showing business pipeline and analytics"
-                width={800}
-                height={500}
-                className="w-full h-auto object-cover"
-                priority
-              />
-              {/* Subtle overlay to tint it */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-[#0a0a0e]/40 via-transparent to-[#818cf8]/10" />
+              <DashboardMock className="w-full" />
             </motion.div>
 
             {/* Floating badge */}
@@ -721,14 +708,8 @@ export default function LandingPage() {
                   >
                     <div className="bg-[#111118] border border-[#1e1e2a] rounded-xl overflow-hidden h-full transition-all duration-300 hover:border-[#818cf8]/30 hover:shadow-lg hover:shadow-[#818cf8]/5">
                       {/* Step image */}
-                      <div className="relative h-32 overflow-hidden">
-                        <Image
-                          src={step.image}
-                          alt={`${step.label} step illustration`}
-                          fill
-                          className="object-cover transition-transform duration-500 hover:scale-110"
-                          sizes="(max-width: 1024px) 50vw, 25vw"
-                        />
+                      <div className="relative h-32 overflow-hidden bg-[#0a0a0e]">
+                        <StepIllustration step={step.step} className="w-full h-full" />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#111118] to-transparent" />
                         <div className="absolute top-3 left-3 w-7 h-7 rounded-full bg-[#818cf8] flex items-center justify-center">
                           <Icon className="w-3.5 h-3.5 text-white" />
@@ -787,14 +768,8 @@ export default function LandingPage() {
                   }}
                 >
                   <div className="bg-[#111118] border border-[#1e1e2a] rounded-xl overflow-hidden h-full transition-all duration-300 hover:border-[#818cf8]/30">
-                    <div className="relative h-24 overflow-hidden">
-                      <Image
-                        src={step.image}
-                        alt={`${step.label} step illustration`}
-                        fill
-                        className="object-cover"
-                        sizes="50vw"
-                      />
+                    <div className="relative h-24 overflow-hidden bg-[#0a0a0e]">
+                      <StepIllustration step={step.step} className="w-full h-full" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#111118] to-transparent" />
                       <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-[#818cf8] flex items-center justify-center">
                         <Icon className="w-3 h-3 text-white" />
@@ -846,14 +821,8 @@ export default function LandingPage() {
                 className="lg:col-span-2 relative group"
               >
                 <div className="relative bg-[#111118] border border-[#1e1e2a] rounded-xl overflow-hidden h-full transition-all duration-300 hover:border-[#818cf8]/30">
-                  <div className="relative h-48 md:h-56 overflow-hidden">
-                    <Image
-                      src={IMAGES.lagos}
-                      alt="Scouting businesses across Lagos"
-                      fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
-                      sizes="(max-width: 1024px) 100vw, 66vw"
-                    />
+                  <div className="relative h-48 md:h-56 overflow-hidden bg-[#0a0a0e]">
+                    <FeatureScoutIllustration className="w-full h-full" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111118] via-[#111118]/40 to-transparent" />
                     <div className="absolute bottom-4 left-5 right-5">
                       <div className="flex items-center gap-2 mb-2">
@@ -941,14 +910,8 @@ export default function LandingPage() {
                 className="relative group"
               >
                 <div className="relative bg-[#111118] border border-[#1e1e2a] rounded-xl overflow-hidden h-full transition-all duration-300 hover:border-[#818cf8]/30">
-                  <div className="relative h-48 md:h-auto md:min-h-[240px] overflow-hidden">
-                    <Image
-                      src={IMAGES.business}
-                      alt="Pipeline tracking dashboard"
-                      fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
-                      sizes="(max-width: 1024px) 100vw, 33vw"
-                    />
+                  <div className="relative h-48 md:h-auto md:min-h-[240px] overflow-hidden bg-[#0a0a0e]">
+                    <FeaturePipelineIllustration className="w-full h-full" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#111118] via-[#111118]/50 to-transparent" />
                     <div className="absolute bottom-4 left-5 right-5">
                       <div className="flex items-center gap-2 mb-2">
@@ -1144,15 +1107,10 @@ export default function LandingPage() {
       <section className="py-24 px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="relative rounded-2xl overflow-hidden">
-            <Image
-              src={IMAGES.lagos}
-              alt="Lagos cityscape"
-              width={1200}
-              height={600}
-              className="w-full h-80 md:h-[420px] object-cover"
-              sizes="(max-width: 768px) 100vw, 1200px"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0e] via-[#0a0a0e]/60 to-[#0a0a0e]/30" />
+            <div className="relative h-80 md:h-[420px] bg-[#0a0a0e]">
+              <CtaBackground />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0e] via-[#0a0a0e]/60 to-[#0a0a0e]/30" />
+            </div>
 
             <div className="absolute inset-0 flex items-center justify-center text-center px-6">
               <motion.div {...fadeUp(0, reduced)}>
