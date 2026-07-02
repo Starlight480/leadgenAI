@@ -7,14 +7,14 @@ type Theme = "dark" | "light"
 const ThemeContext = createContext<{
   theme: Theme
   toggle: () => void
-}>({ theme: "dark", toggle: () => {} })
+}>({ theme: "light", toggle: () => {} })
 
 export function useTheme() {
   return useContext(ThemeContext)
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark")
+  const [theme, setTheme] = useState<Theme>("light")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -22,9 +22,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("leadgen-theme") as Theme | null
     if (saved) {
       setTheme(saved)
-    } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-      setTheme("light")
+    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      setTheme("dark")
     }
+    // No saved preference and no dark preference → stays "light" (default)
   }, [])
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggle = () => setTheme(t => (t === "dark" ? "light" : "dark"))
 
   if (!mounted) {
-    return <html lang="en" className="dark"><body>{children}</body></html>
+    return <html lang="en"><body>{children}</body></html>
   }
 
   return (

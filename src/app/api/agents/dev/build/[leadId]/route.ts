@@ -10,6 +10,15 @@ export async function POST(
 ) {
   const { leadId } = await params
   const body = await request.json().catch(() => ({}))
+
+  // Approval gate — Dev only builds with explicit approval
+  if (body.approved !== true) {
+    return NextResponse.json(
+      { error: 'Build not approved. Send approved=true to proceed.' },
+      { status: 403 }
+    )
+  }
+
   const path = body.path || 'website'
   const supabase = getSupabaseAdmin()
   const startTime = Date.now()

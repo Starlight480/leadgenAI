@@ -396,6 +396,35 @@ My Instagram: @dami.builds`;
       success: true,
     })
 
+    // Send Telegram notification
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+    const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
+    if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+      const channelsUsed = outreachItems.map(i => i.channel).join(', ')
+      const manualItems = outreachItems.filter(i => i.requires_manual)
+      const manualList = manualItems.map(i => `• ${i.channel} (${i.manual_reason || 'manual required'})`).join('\n')
+
+      const telegramText = [
+        `📢 Outreach Created`,
+        ``,
+        `Business: ${lead.business_name}`,
+        `Channels: ${channelsUsed}`,
+        `Auto-sent: ${emailsSent} email(s)`,
+        ``,
+        manualItems.length > 0 ? `⚠️ Manual Required (${manualItems.length}):\n${manualList}` : '✅ All items auto-sent',
+      ].join('\n')
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: telegramText,
+          parse_mode: 'Markdown'
+        })
+      })
+    }
+
     return NextResponse.json({
       outreach_count: items?.length || 0,
       emails_sent: emailsSent,

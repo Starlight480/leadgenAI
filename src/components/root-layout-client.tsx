@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
+import { Loader2 } from "lucide-react"
+import { sanitizeLoginInput } from "@/lib/security"
 
 export default function RootLayoutClient({
   children,
@@ -18,7 +20,7 @@ export default function RootLayoutClient({
 
   if (auth === null) {
     return <div className="flex min-h-screen items-center justify-center bg-bg-primary">
-      <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
     </div>
   }
 
@@ -29,7 +31,7 @@ export default function RootLayoutClient({
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 ml-0 md:ml-60 p-4 md:p-6 pt-14 md:pt-6">
+      <main className="flex-1 ml-0 md:ml-64 p-5 md:p-8 pt-16 md:pt-8">
         {children}
       </main>
     </div>
@@ -47,10 +49,17 @@ function LoginInline({ onLogin }: { onLogin: () => void }) {
     setError("")
     setLoading(true)
     try {
+      const safeUsername = sanitizeLoginInput(username, 'username')
+      const safePassword = sanitizeLoginInput(password, 'password')
+      if (!safeUsername.valid || !safePassword.valid) {
+        setError(safeUsername.error || safePassword.error || "Invalid input")
+        setLoading(false)
+        return
+      }
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: safeUsername.sanitized, password: safePassword.sanitized }),
       })
       if (res.ok) onLogin()
       else setError("Invalid username or password")
@@ -61,45 +70,76 @@ function LoginInline({ onLogin }: { onLogin: () => void }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-primary">
-      <div className="w-full max-w-sm mx-4">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-text-primary">
+    <div className="min-h-screen flex items-center justify-center bg-bg-primary px-4"
+      style={{
+        background: "linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-elevated) 50%, var(--bg-primary) 100%)",
+      }}
+    >
+      <div className="w-full max-w-md">
+        {/* Brand mark */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 mb-5">
+            <span className="text-2xl font-bold text-accent tracking-tight">LG</span>
+          </div>
+          <h1 className="text-3xl font-bold text-text-primary tracking-tight">
             LeadGen <span className="text-accent">OS</span>
           </h1>
-          <p className="text-sm text-text-muted mt-1">Sign in to continue</p>
+          <p className="text-sm text-text-muted mt-2">Sign in to your command centre</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-text-muted mb-1">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-md border border-border-default bg-bg-surface text-text-primary text-sm focus:outline-none focus:border-accent transition-colors"
-              placeholder="Enter username"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-text-muted mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-md border border-border-default bg-bg-surface text-text-primary text-sm focus:outline-none focus:border-accent transition-colors"
-              placeholder="Enter password"
-            />
-          </div>
-          {error && <p className="text-xs text-error">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading || !username || !password}
-            className="w-full py-2.5 rounded-md bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
+
+        {/* Login card */}
+        <div className="bg-bg-surface border border-border-default rounded-2xl p-8 shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-text-muted mb-2">Username</label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent transition-colors min-h-[48px]"
+                placeholder="Enter username"
+                autoFocus
+                autoComplete="username"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-text-muted mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent transition-colors min-h-[48px]"
+                placeholder="Enter password"
+                autoComplete="current-password"
+              />
+            </div>
+
+            {error && (
+              <div className="px-4 py-3 rounded-lg bg-error/5 border border-error/15">
+                <p className="text-xs text-error font-medium">{error}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !username || !password}
+              className="w-full py-3 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Signing in…
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-center text-[11px] text-text-muted mt-6">
+          v0.1.0 — 2026
+        </p>
       </div>
     </div>
   )

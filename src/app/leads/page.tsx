@@ -152,17 +152,17 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">
+          <h1 className="text-3xl font-bold text-text-primary">
             Leads
             {categoryFilter !== "all" && (
               <span className="text-lg text-accent ml-2">— {categoryFilter}</span>
             )}
           </h1>
-          <p className="text-sm text-text-muted mt-1">
+          <p className="text-sm text-text-muted mt-1.5">
             {categoryFilter !== "all"
               ? `${leads.length} ${categoryFilter}s`
               : `${leads.length} total leads`
@@ -172,12 +172,12 @@ export default function LeadsPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setShowAddForm(true)}
-            className="px-4 py-2 rounded-md bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors flex items-center gap-2 min-h-[44px] shadow-sm"
           >
             <Plus size={14} />
             Add Lead
           </button>
-          <button className="px-4 py-2 rounded-md border border-border-default text-text-secondary text-sm hover:bg-bg-hover transition-colors flex items-center gap-2">
+          <button className="px-5 py-2.5 rounded-lg border border-border-default text-text-secondary text-sm hover:bg-bg-hover transition-colors flex items-center gap-2 min-h-[44px]">
             <Download size={14} />
             Export
           </button>
@@ -234,13 +234,13 @@ export default function LeadsPage() {
             placeholder="Search leads..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors"
+            className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors min-h-[44px]"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm cursor-pointer focus:outline-none focus:border-accent"
+          className="px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm cursor-pointer focus:outline-none focus:border-accent min-h-[44px]"
         >
           <option value="all">All Status</option>
           {STATUS_FLOW.map((s) => (
@@ -263,17 +263,17 @@ export default function LeadsPage() {
           />
         </div>
       ) : (
-        <div className="bg-bg-surface border border-border-default rounded-lg overflow-hidden">
+        <div className="bg-bg-surface border border-border-default rounded-xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-bg-primary text-text-muted text-[11px] font-semibold uppercase tracking-wider">
-                  <th className="px-4 py-2.5 text-left">Business</th>
-                  <th className="px-4 py-2.5 text-left hidden md:table-cell">Category</th>
-                  <th className="px-4 py-2.5 text-left hidden lg:table-cell">Area</th>
-                  <th className="px-4 py-2.5 text-left hidden sm:table-cell">Contact</th>
-                  <th className="px-4 py-2.5 text-left">Status</th>
-                  <th className="px-4 py-2.5 text-left hidden md:table-cell">Added</th>
+                  <th className="px-5 py-3 text-left">Business</th>
+                  <th className="px-5 py-3 text-left hidden md:table-cell">Category</th>
+                  <th className="px-5 py-3 text-left hidden lg:table-cell">Area</th>
+                  <th className="px-5 py-3 text-left hidden sm:table-cell">Contact</th>
+                  <th className="px-5 py-3 text-left">Status</th>
+                  <th className="px-5 py-3 text-left hidden md:table-cell">Added</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,7 +286,7 @@ export default function LeadsPage() {
                       className="border-b border-border-default/50 hover:bg-bg-hover/50 transition-colors cursor-pointer border-l-[3px]"
                       style={{ borderLeftColor: st?.color || "#1a2840" }}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium text-text-primary">{lead.business_name}</p>
                           {lead.priority === "high" && <Star size={12} className="text-warning fill-warning" />}
@@ -294,12 +294,12 @@ export default function LeadsPage() {
                         <p className="text-xs text-text-muted truncate max-w-[200px] md:hidden">{lead.address || lead.category}</p>
                         <p className="text-xs text-text-muted truncate max-w-[200px] hidden md:block">{lead.address || "No address"}</p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-text-secondary hidden md:table-cell">{lead.category}</td>
-                      <td className="px-4 py-3 text-sm text-text-secondary hidden lg:table-cell">{lead.area || "—"}</td>
-                      <td className="px-4 py-3 text-sm text-text-secondary hidden sm:table-cell">
+                      <td className="px-5 py-4 text-sm text-text-secondary hidden md:table-cell">{lead.category}</td>
+                      <td className="px-5 py-4 text-sm text-text-secondary hidden lg:table-cell">{lead.area || "—"}</td>
+                      <td className="px-5 py-4 text-sm text-text-secondary hidden sm:table-cell">
                         {lead.phone || lead.email || "—"}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-4">
                         <span
                           className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold"
                           style={{
@@ -311,7 +311,7 @@ export default function LeadsPage() {
                           {st?.label || lead.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-text-muted hidden md:table-cell">
+                      <td className="px-5 py-4 text-xs text-text-muted hidden md:table-cell">
                         {new Date(lead.created_at).toLocaleDateString()}
                       </td>
                     </tr>
@@ -447,11 +447,11 @@ function LeadDetailDrawer({
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-[480px] bg-bg-surface border-l border-border-default shadow-2xl flex flex-col overflow-y-auto">
+      <div className="absolute right-0 top-0 h-full w-full max-w-[520px] bg-bg-surface border-l border-border-default shadow-2xl flex flex-col overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-default sticky top-0 bg-bg-surface z-10">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border-default sticky top-0 bg-bg-surface z-10">
           <div className="min-w-0">
-            <h2 className="text-lg font-bold text-text-primary truncate">{lead.business_name}</h2>
+            <h2 className="text-xl font-bold text-text-primary truncate">{lead.business_name}</h2>
             <div className="flex items-center gap-2 mt-0.5">
               {st && (
                 <span
@@ -464,12 +464,12 @@ function LeadDetailDrawer({
               <span className="text-[11px] text-text-muted">{lead.category}</span>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-bg-hover transition-colors">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-hover transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
             <X size={18} className="text-text-muted" />
           </button>
         </div>
 
-        <div className="p-5 space-y-5 flex-1">
+        <div className="p-6 space-y-6 flex-1">
           {/* Status Flow */}
           <div>
             <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-2">Pipeline</p>
@@ -502,11 +502,11 @@ function LeadDetailDrawer({
           {/* Quick Actions */}
           <div>
             <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-2">Contact</p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-3">
               {lead.phone && (
                 <a
                   href={`tel:${lead.phone}`}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:bg-bg-hover transition-colors"
+                  className="flex flex-col items-center gap-1.5 p-3.5 rounded-xl border border-border-default hover:bg-bg-hover hover:shadow-sm transition-all duration-150 min-h-[44px]"
                 >
                   <Phone size={16} className="text-success" />
                   <span className="text-[11px] text-text-muted">Call</span>
@@ -517,7 +517,7 @@ function LeadDetailDrawer({
                   href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:bg-bg-hover transition-colors"
+                  className="flex flex-col items-center gap-1.5 p-3.5 rounded-xl border border-border-default hover:bg-bg-hover hover:shadow-sm transition-all duration-150 min-h-[44px]"
                 >
                   <MessageCircle size={16} className="text-success" />
                   <span className="text-[11px] text-text-muted">WhatsApp</span>
@@ -526,7 +526,7 @@ function LeadDetailDrawer({
               {lead.email && (
                 <a
                   href={`mailto:${lead.email}`}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:bg-bg-hover transition-colors"
+                  className="flex flex-col items-center gap-1.5 p-3.5 rounded-xl border border-border-default hover:bg-bg-hover hover:shadow-sm transition-all duration-150 min-h-[44px]"
                 >
                   <Mail size={16} className="text-info" />
                   <span className="text-[11px] text-text-muted">Email</span>
@@ -537,7 +537,7 @@ function LeadDetailDrawer({
                   href={`https://instagram.com/${lead.instagram.replace("@", "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:bg-bg-hover transition-colors"
+                  className="flex flex-col items-center gap-1.5 p-3.5 rounded-xl border border-border-default hover:bg-bg-hover hover:shadow-sm transition-all duration-150 min-h-[44px]"
                 >
                   <AtSign size={16} className="text-pink-500" />
                   <span className="text-[11px] text-text-muted">Instagram</span>
@@ -621,7 +621,7 @@ function LeadDetailDrawer({
             <button
               onClick={runPipeline}
               disabled={!!runningAgent}
-              className="w-full mb-3 px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full mb-3 px-4 py-3 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[48px]"
             >
               {runningAgent === "pipeline" ? (
                 <>
@@ -632,11 +632,11 @@ function LeadDetailDrawer({
                 <>▶ Run Full Pipeline</>
               )}
             </button>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={() => runAgent("scribe")}
                 disabled={!!runningAgent}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:border-accent/40 hover:bg-bg-hover transition-colors disabled:opacity-50"
+                className="flex flex-col items-center gap-1.5 p-3.5 rounded-xl border border-border-default hover:border-accent/40 hover:bg-bg-hover hover:shadow-sm transition-all duration-150 disabled:opacity-50 min-h-[44px]"
               >
                 {runningAgent === "scribe" ? (
                   <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -649,7 +649,7 @@ function LeadDetailDrawer({
               <button
                 onClick={() => runAgent("dev")}
                 disabled={!!runningAgent}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:border-accent/40 hover:bg-bg-hover transition-colors disabled:opacity-50"
+                className="flex flex-col items-center gap-1.5 p-3.5 rounded-xl border border-border-default hover:border-accent/40 hover:bg-bg-hover hover:shadow-sm transition-all duration-150 disabled:opacity-50 min-h-[44px]"
               >
                 {runningAgent === "dev" ? (
                   <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -662,7 +662,7 @@ function LeadDetailDrawer({
               <button
                 onClick={() => runAgent("reach")}
                 disabled={!!runningAgent}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-border-default hover:border-accent/40 hover:bg-bg-hover transition-colors disabled:opacity-50"
+                className="flex flex-col items-center gap-1.5 p-3.5 rounded-xl border border-border-default hover:border-accent/40 hover:bg-bg-hover hover:shadow-sm transition-all duration-150 disabled:opacity-50 min-h-[44px]"
               >
                 {runningAgent === "reach" ? (
                   <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -779,7 +779,7 @@ function LeadDetailDrawer({
               onBlur={saveNotes}
               rows={3}
               placeholder="Add notes about this lead..."
-              className="w-full px-3 py-2 rounded-md bg-bg-primary border border-border-default text-text-primary text-sm focus:outline-none focus:border-accent resize-none placeholder:text-text-muted"
+              className="w-full px-4 py-3 rounded-lg bg-bg-primary border border-border-default text-text-primary text-sm focus:outline-none focus:border-accent resize-none placeholder:text-text-muted min-h-[48px]"
             />
           </div>
 
@@ -851,14 +851,14 @@ function AddLeadModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-bg-surface border border-border-default rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-default sticky top-0 bg-bg-surface z-10">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-bg-surface border border-border-default rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border-default sticky top-0 bg-bg-surface z-10">
           <h2 className="text-lg font-bold text-text-primary">Add Lead</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-bg-hover">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-hover min-w-[44px] min-h-[44px] flex items-center justify-center">
             <X size={18} className="text-text-muted" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-3">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="text-[11px] uppercase tracking-wider text-text-muted font-semibold">Business Name *</label>
             <input
@@ -866,7 +866,7 @@ function AddLeadModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
               required
               value={form.business_name}
               onChange={(e) => setForm((f) => ({ ...f, business_name: e.target.value }))}
-              className="w-full mt-1 px-3 py-2 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent"
+              className="w-full mt-1.5 px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent min-h-[44px]"
             />
           </div>
           <div>
@@ -899,7 +899,7 @@ function AddLeadModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
                 type="text"
                 value={form.city}
                 onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                className="w-full mt-1 px-3 py-2 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent"
+                className="w-full mt-1.5 px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent min-h-[44px]"
               />
             </div>
             <div>
@@ -919,7 +919,7 @@ function AddLeadModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
               type="text"
               value={form.address}
               onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              className="w-full mt-1 px-3 py-2 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent"
+              className="w-full mt-1.5 px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent min-h-[44px]"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -929,7 +929,7 @@ function AddLeadModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
                 type="tel"
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                className="w-full mt-1 px-3 py-2 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent"
+                className="w-full mt-1.5 px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent min-h-[44px]"
               />
             </div>
             <div>
@@ -938,7 +938,7 @@ function AddLeadModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                className="w-full mt-1 px-3 py-2 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent"
+                className="w-full mt-1.5 px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent min-h-[44px]"
               />
             </div>
           </div>
@@ -958,7 +958,7 @@ function AddLeadModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
               rows={2}
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              className="w-full mt-1 px-3 py-2 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent resize-none"
+              className="w-full mt-1.5 px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent resize-none min-h-[48px]"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -972,9 +972,9 @@ function AddLeadModal({ onClose, onAdded }: { onClose: () => void; onAdded: () =
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 rounded-md bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+              className="px-5 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 min-h-[44px]"
             >
-              {saving ? "Saving..." : "Add Lead"}
+              {saving ? "Saving…" : "Add Lead"}
             </button>
           </div>
         </form>

@@ -104,6 +104,59 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
       }
     }
 
+    // Cross-check: validate profile quality before saving
+    const validationErrors: string[] = []
+
+    // Check business_summary is not empty/placeholder
+    if (!profile.business_summary || profile.business_summary.trim().length < 10) {
+      validationErrors.push('business_summary is empty or too short')
+    }
+
+    // Check recommended_pages has at least 2 entries
+    if (!Array.isArray(profile.recommended_pages) || profile.recommended_pages.length < 2) {
+      validationErrors.push(`recommended_pages has ${profile.recommended_pages?.length || 0} entries (minimum 2)`)
+    }
+
+    // Check price_recommendation_ngn is between 50000 and 1000000
+    if (typeof profile.price_recommendation_ngn !== 'number' ||
+        profile.price_recommendation_ngn < 50000 ||
+        profile.price_recommendation_ngn > 1000000) {
+      validationErrors.push(`price_recommendation_ngn is ${profile.price_recommendation_ngn} (must be 50000-1000000)`)
+    }
+
+    // Check website_pitch is not generic
+    const genericPhrases = ['every business needs', 'in today\'s digital world']
+    const pitchLower = (profile.website_pitch || '').toLowerCase()
+    for (const phrase of genericPhrases) {
+      if (pitchLower.includes(phrase)) {
+        validationErrors.push(`website_pitch contains generic phrase: "${phrase}"`)
+      }
+    }
+    if (!profile.website_pitch || profile.website_pitch.trim().length < 10) {
+      validationErrors.push('website_pitch is empty or too short')
+    }
+
+    // If validation fails, mark as trash
+    if (validationErrors.length > 0) {
+      await supabase.from('leads').update({ status: 'trash', pipeline_stage: 'trash' }).eq('id', leadId)
+
+      await supabase.from('pipeline_events').insert({
+        lead_id: leadId,
+        agent: 'scribe',
+        event_type: 'profile_validation_failed',
+        summary: `Scribe profiled "${lead.business_name}" but failed validation: ${validationErrors.join('; ')}`,
+        details: { validation_errors: validationErrors, profile },
+        duration_ms: Date.now() - startTime,
+        success: false,
+        error: validationErrors.join('; '),
+      })
+
+      return NextResponse.json({
+        error: 'Profile validation failed — lead marked as trash',
+        validation_errors: validationErrors,
+      }, { status: 422 })
+    }
+
     // Save business profile
     const { data: savedProfile, error: saveErr } = await supabase
       .from('business_profiles')

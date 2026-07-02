@@ -89,36 +89,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Step 3: Process each lead through Scribe → Dev → Reach
+    // Step 3: Process each lead through Scribe only (Dev/Reach await approval)
     let processed = 0
     let failed = 0
 
     for (const lead of leads) {
       try {
-        // Scribe
+        // Scribe — profile the lead
         const scribeRes = await fetch(`${baseUrl}/api/agents/scribe/run/${lead.id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })
         if (!scribeRes.ok) throw new Error('Scribe failed')
         await supabase.from('leads').update({ status: 'profiled' }).eq('id', lead.id)
-
-        // Dev
-        const devRes = await fetch(`${baseUrl}/api/agents/dev/build/${lead.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: 'website' }),
-        })
-        if (!devRes.ok) throw new Error('Dev failed')
-        await supabase.from('leads').update({ status: 'spec_written' }).eq('id', lead.id)
-
-        // Reach
-        const reachRes = await fetch(`${baseUrl}/api/agents/reach/process/${lead.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        })
-        if (!reachRes.ok) throw new Error('Reach failed')
-        await supabase.from('leads').update({ status: 'contacted' }).eq('id', lead.id)
 
         processed++
       } catch (err) {
@@ -133,7 +116,7 @@ export async function POST(request: NextRequest) {
       .from('campaigns')
       .update({
         leads_processed: processed,
-        status: 'completed',
+        status: 'awaiting_approval',
         completed_at: new Date().toISOString(),
       })
       .eq('id', campaignId)
@@ -144,19 +127,35 @@ export async function POST(request: NextRequest) {
       campaign_id: campaignId,
       agent: 'orchestrator',
       event_type: 'pipeline_completed',
-      summary: `Pipeline completed: ${processed} processed, ${failed} failed out of ${leads.length} leads (${Math.round(duration / 1000)}s)`,
+      summary: `Pipeline completed: ${processed} profiled, ${failed} failed out of ${leads.length} leads (${Math.round(duration / 1000)}s) — awaiting approval before Dev builds`,
       details: { processed, failed, total: leads.length, duration_seconds: Math.round(duration / 1000) },
       duration_ms: duration,
       success: true,
     })
 
+    // Send Telegram notification
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+    const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID
+    if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: `🎯 Pipeline Complete\n\nCampaign: ${category} in ${area || city}\nLeads found: ${scoutData.leads_found}\nLeads profiled: ${processed}\nFailed: ${failed}\n\nAwaiting your approval before Dev builds websites.`,
+          parse_mode: 'Markdown'
+        })
+      })
+    }
+
     return NextResponse.json({
       campaign_id: campaignId,
-      status: 'completed',
+      status: 'awaiting_approval',
       leads_found: scoutData.leads_found,
-      leads_processed: processed,
+      leads_profiled: processed,
       leads_failed: failed,
       duration_seconds: Math.round(duration / 1000),
+      message: 'Pipeline complete. Dev and Reach require explicit approval.',
     })
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error)

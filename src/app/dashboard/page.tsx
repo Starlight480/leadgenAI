@@ -63,7 +63,6 @@ export default function DashboardPage() {
         supabase.from("outreach").select("id", { count: "exact", head: true }).eq("status", "sent").gt("created_at", sevenDaysAgo),
       ])
 
-      // Try to get pending follow-ups (table may not exist yet)
       let pendingFollowUps = 0
       try {
         const { count } = await supabase.from("follow_ups").select("id", { count: "exact", head: true }).eq("status", "pending")
@@ -86,7 +85,6 @@ export default function DashboardPage() {
         ? Math.round((interested + contacted + specWritten + siteBuilt) / totalLeads * 100)
         : 0
 
-      // Build "This Week" activity (last 7 days grouped by day)
       const weekEventsRes = await supabase
         .from("pipeline_events")
         .select("created_at, success")
@@ -131,7 +129,6 @@ export default function DashboardPage() {
     setScoutRunning(true)
     setScoutResult(null)
     try {
-      // Create campaign
       const campaignRes = await fetch("/api/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -146,7 +143,6 @@ export default function DashboardPage() {
       const campaign = await campaignRes.json()
       if (!campaign.id) throw new Error("Failed to create campaign")
 
-      // Run Scout
       const scoutRes = await fetch("/api/agents/scout/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -176,16 +172,16 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
-          <p className="text-sm text-text-muted mt-1">Lead generation command center</p>
+          <h1 className="text-3xl font-bold text-text-primary">Dashboard</h1>
+          <p className="text-sm text-text-muted mt-1.5">Lead generation command centre</p>
         </div>
         <Link
           href="/campaigns"
-          className="px-4 py-2 rounded-md bg-accent text-bg-primary text-sm font-medium hover:bg-accent-hover transition-colors"
+          className="px-5 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors shadow-sm min-h-[44px] flex items-center"
         >
           Run Campaign
         </Link>
@@ -194,12 +190,12 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {statCards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-bg-surface border border-border-default rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Icon size={14} className={color} />
+          <div key={label} className="bg-bg-surface border border-border-default rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center gap-2 mb-3">
+              <Icon size={15} className={color} />
               <span className="text-[11px] uppercase tracking-wider text-text-muted font-semibold">{label}</span>
             </div>
-            <p className="text-2xl font-bold text-text-primary">
+            <p className="text-3xl font-bold text-text-primary tracking-tight">
               {loading ? "—" : value}
             </p>
           </div>
@@ -208,20 +204,20 @@ export default function DashboardPage() {
 
       {/* This Week */}
       <div>
-        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">This Week</h2>
-        <div className="bg-bg-surface border border-border-default rounded-lg p-4">
-          <div className="flex items-end gap-2 h-28">
+        <h2 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">This Week</h2>
+        <div className="bg-bg-surface border border-border-default rounded-xl p-5 shadow-sm">
+          <div className="flex items-end gap-3 h-36">
             {weekActivity.map((day) => {
               const maxCount = Math.max(...weekActivity.map(d => d.count), 1)
               const height = Math.max((day.count / maxCount) * 100, 4)
               return (
-                <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[10px] text-text-muted font-medium">{day.count}</span>
+                <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5">
+                  <span className="text-[11px] text-text-muted font-medium">{day.count}</span>
                   <div
-                    className="w-full rounded-t bg-accent/30 transition-all duration-300"
+                    className="w-full rounded-t-md bg-accent/25 transition-all duration-300 hover:bg-accent/40"
                     style={{ height: `${height}%` }}
                   />
-                  <span className="text-[10px] text-text-muted">{day.label}</span>
+                  <span className="text-[11px] text-text-muted font-medium">{day.label}</span>
                 </div>
               )
             })}
@@ -230,18 +226,18 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions + Quick Scout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Quick Actions */}
         <div className="lg:col-span-2">
-          <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <h2 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Quick Actions</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {quickActions.map(({ label, href, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="bg-bg-surface border border-border-default rounded-lg p-4 hover:border-accent/40 hover:bg-bg-hover transition-colors flex items-center gap-3"
+                className="bg-bg-surface border border-border-default rounded-xl p-5 hover:border-accent/40 hover:bg-bg-hover transition-all duration-200 flex items-center gap-3 shadow-sm hover:shadow-md group"
               >
-                <Icon size={16} className="text-accent" />
+                <Icon size={18} className="text-accent group-hover:scale-110 transition-transform duration-150" />
                 <span className="text-sm font-medium text-text-primary">{label}</span>
               </Link>
             ))}
@@ -250,60 +246,60 @@ export default function DashboardPage() {
 
         {/* Quick Scout */}
         <div>
-          <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">Quick Scout</h2>
-          <div className="bg-bg-surface border border-border-default rounded-lg p-4">
-            <form onSubmit={handleQuickScout} className="space-y-3">
+          <h2 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Quick Scout</h2>
+          <div className="bg-bg-surface border border-border-default rounded-xl p-5 shadow-sm">
+            <form onSubmit={handleQuickScout} className="space-y-4">
               <div>
-                <label className="block text-[11px] uppercase text-text-muted font-semibold mb-1">Category</label>
+                <label className="block text-[11px] uppercase text-text-muted font-semibold mb-1.5">Category</label>
                 <select
                   value={scoutCategory}
                   onChange={(e) => setScoutCategory(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent"
+                  className="w-full px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent min-h-[44px]"
                 >
                   {CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] uppercase text-text-muted font-semibold mb-1">City</label>
+                  <label className="block text-[11px] uppercase text-text-muted font-semibold mb-1.5">City</label>
                   <input
                     type="text"
                     value={scoutCity}
                     onChange={(e) => setScoutCity(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent"
+                    className="w-full px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent min-h-[44px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] uppercase text-text-muted font-semibold mb-1">Area</label>
+                  <label className="block text-[11px] uppercase text-text-muted font-semibold mb-1.5">Area</label>
                   <input
                     type="text"
                     value={scoutArea}
                     onChange={(e) => setScoutArea(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-md border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent"
+                    className="w-full px-3 py-2.5 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent min-h-[44px]"
                   />
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={scoutRunning}
-                className="w-full px-4 py-2 rounded-md bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full px-4 py-2.5 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
               >
                 {scoutRunning ? (
                   <>
-                    <Loader2 size={14} className="animate-spin" />
-                    Scouting...
+                    <Loader2 size={15} className="animate-spin" />
+                    Scouting…
                   </>
                 ) : (
                   <>
-                    <Zap size={14} />
+                    <Zap size={15} />
                     Quick Scout
                   </>
                 )}
               </button>
               {scoutResult && (
-                <p className={`text-xs text-center ${scoutResult.includes("✅") ? "text-success" : "text-error"}`}>
+                <p className={`text-xs text-center py-2 rounded-lg ${scoutResult.includes("✅") ? "text-success bg-success/5" : "text-error bg-error/5"}`}>
                   {scoutResult}
                 </p>
               )}
@@ -314,19 +310,19 @@ export default function DashboardPage() {
 
       {/* Activity Feed */}
       <div>
-        <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-3">Recent Activity</h2>
-        <div className="bg-bg-surface border border-border-default rounded-lg">
+        <h2 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Recent Activity</h2>
+        <div className="bg-bg-surface border border-border-default rounded-xl shadow-sm overflow-hidden">
           {loading ? (
-            <div className="p-8 text-center text-text-muted text-sm">Loading activity...</div>
+            <div className="p-10 text-center text-text-muted text-sm">Loading activity…</div>
           ) : events.length === 0 ? (
-            <div className="p-8 text-center">
+            <div className="p-10 text-center">
               <Activity size={32} className="text-text-muted mx-auto mb-3" />
               <p className="text-sm text-text-muted">No activity yet. Run a campaign or use agent buttons on a lead.</p>
             </div>
           ) : (
             <div className="divide-y divide-border-default">
               {events.slice(0, 10).map((event, i) => (
-                <div key={i} className="px-4 py-3 flex items-center gap-3">
+                <div key={i} className="px-5 py-3.5 flex items-center gap-3 hover:bg-bg-hover/50 transition-colors">
                   <span className="text-lg w-7 text-center flex-shrink-0">
                     {AGENT_ICONS[event.agent] || "⚙️"}
                   </span>
