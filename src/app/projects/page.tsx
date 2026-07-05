@@ -188,7 +188,13 @@ function ProjectDetailModal({ project, onClose }: { project: Project; onClose: (
   const pages = spec?.pages as Record<string, unknown> | null
   const colorPalette = spec?.color_palette as Record<string, string> | null
   const content = spec?.content as Record<string, unknown> | null
-  const services = (content?.services as string[]) || []
+  const rawServices = (content?.services as unknown[]) || []
+  const services = rawServices.map(s => {
+    if (typeof s === "string") return s
+    if (s && typeof s === "object" && "name" in s) return (s as { name: string }).name
+    if (s && typeof s === "object") return JSON.stringify(s)
+    return String(s)
+  })
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
@@ -256,7 +262,11 @@ function ProjectDetailModal({ project, onClose }: { project: Project; onClose: (
                     {Object.entries(pages).map(([name, detail]) => (
                       <div key={name} className="text-xs px-2 py-1.5 rounded bg-bg-primary border border-border-default text-text-secondary">
                         <span className="font-medium text-text-primary">{name}</span>
-                        {typeof detail === "string" && <span className="text-text-muted ml-1">— {detail}</span>}
+                        {detail && typeof detail === "object" ? (
+                          <span className="text-text-muted ml-1">— {JSON.stringify(detail).slice(0, 50)}</span>
+                        ) : typeof detail === "string" ? (
+                          <span className="text-text-muted ml-1">— {detail}</span>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -269,7 +279,7 @@ function ProjectDetailModal({ project, onClose }: { project: Project; onClose: (
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(colorPalette).map(([name, hex]) => (
                       <div key={name} className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full border border-border-default" style={{ backgroundColor: hex }} />
+                        <div className="w-4 h-4 rounded-full border border-border-default" style={{ backgroundColor: typeof hex === "string" ? hex : "#6b7280" }} />
                         <span className="text-[11px] text-text-muted">{name}: {hex}</span>
                       </div>
                     ))}
