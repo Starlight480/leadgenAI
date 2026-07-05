@@ -103,7 +103,7 @@ Sentiment guidelines:
     .update({
       outreach_status: newStatus,
       replied_at: new Date().toISOString(),
-      reply_count: supabase.rpc ? 1 : 0,
+      reply_count: 0,
     })
     .eq("id", lead_id)
 

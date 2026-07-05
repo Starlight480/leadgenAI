@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     .update({
       outreach_status: "contacted",
       last_contacted_at: new Date().toISOString(),
-      outreach_count: supabase.rpc ? 1 : 0, // Will need to increment manually
+      outreach_count: 0, // Will need to increment manually
     })
     .eq("id", outreach.lead_id)
 
