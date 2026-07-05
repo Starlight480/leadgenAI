@@ -700,6 +700,9 @@ function LeadDetailDrawer({
             )}
           </div>
 
+          {/* Outreach */}
+          <OutreachSection leadId={lead.id} lead={lead} />
+
           {/* Business Profile */}
           <div>
             <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-2">Business Profile</p>
@@ -826,6 +829,361 @@ function LeadDetailDrawer({
 
 /* ─── Add Lead Modal ─── */
 
+/* ─── Outreach Section ─── */
+
+function OutreachSection({ leadId, lead }: { leadId: string; lead: Lead }) {
+  const [outreach, setOutreach] = useState<any[]>([])
+  const [followUps, setFollowUps] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [draftMessage, setDraftMessage] = useState("")
+  const [draftChannel, setDraftChannel] = useState<"email" | "whatsapp" | "instagram">("email")
+  const [showDraft, setShowDraft] = useState(false)
+  const [showReplyForm, setShowReplyForm] = useState(false)
+  const [replyMessage, setReplyMessage] = useState("")
+  const [replyResult, setReplyResult] = useState<any>(null)
+
+  // Determine available channels based on lead contact info
+  const availableChannels: ("email" | "whatsapp" | "instagram")[] = []
+  if (lead.email) availableChannels.push("email")
+  if (lead.phone) availableChannels.push("whatsapp")
+  if (lead.instagram) availableChannels.push("instagram")
+  if (availableChannels.length === 0) availableChannels.push("email") // fallback
+
+  // Fetch outreach history and follow-ups
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [outreachRes, followUpRes] = await Promise.all([
+        fetch(`/api/outreach?lead_id=${leadId}`),
+        fetch(`/api/follow-ups?lead_id=${leadId}`),
+      ])
+      const outreachData = await outreachRes.json()
+      const followUpData = await followUpRes.json()
+      setOutreach(outreachData.outreach || [])
+      setFollowUps(followUpData.follow_ups || [])
+    } catch {
+      // Silently fail
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [leadId])
+
+  // Generate a new message
+  const generateMessage = async (channel: string, followupNumber: number = 0) => {
+    setGenerating(true)
+    try {
+      const res = await fetch("/api/outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: leadId,
+          channel,
+          followup_number: followupNumber,
+        }),
+      })
+      const data = await res.json()
+      if (data.outreach?.message) {
+        setDraftMessage(data.outreach.message)
+        setDraftChannel(channel as any)
+        setShowDraft(true)
+      }
+    } catch {
+      // Error
+    }
+    setGenerating(false)
+  }
+
+  // Mark outreach as sent
+  const markAsSent = async (outreachId: string) => {
+    setSending(true)
+    try {
+      await fetch("/api/outreach/mark-sent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outreach_id: outreachId }),
+      })
+      fetchData() // Refresh
+    } catch {
+      // Error
+    }
+    setSending(false)
+  }
+
+  // Log a reply
+  const logReply = async () => {
+    if (!replyMessage.trim()) return
+    setSending(true)
+    try {
+      const res = await fetch("/api/replies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: leadId,
+          channel: draftChannel,
+          message: replyMessage,
+        }),
+      })
+      const data = await res.json()
+      setReplyResult(data)
+      setReplyMessage("")
+      setShowReplyForm(false)
+      fetchData() // Refresh
+    } catch {
+      // Error
+    }
+    setSending(false)
+  }
+
+  // Mark follow-up as completed
+  const completeFollowUp = async (followUpId: string) => {
+    await fetch("/api/follow-ups", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ follow_up_id: followUpId, status: "completed" }),
+    })
+    fetchData()
+  }
+
+  const pendingFollowUps = followUps.filter(f => f.status === "pending")
+  const sentMessages = outreach.filter(o => o.status === "sent")
+  const draftMessages = outreach.filter(o => o.status === "draft")
+
+  const CHANNEL_ICONS: Record<string, string> = {
+    email: "📧",
+    whatsapp: "💬",
+    instagram: "📷",
+  }
+
+  const CHANNEL_COLORS: Record<string, string> = {
+    email: "#3b82f6",
+    whatsapp: "#22c55e",
+    instagram: "#e1306c",
+  }
+
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-wider text-text-muted font-semibold mb-2">Outreach</p>
+
+      {/* Pending Follow-ups */}
+      {pendingFollowUps.length > 0 && (
+        <div className="mb-4 p-3 rounded-lg bg-warning/5 border border-warning/20">
+          <p className="text-[11px] font-semibold text-warning mb-2">
+            ⏰ {pendingFollowUps.length} Follow-up{pendingFollowUps.length > 1 ? "s" : ""} Due
+          </p>
+          {pendingFollowUps.map((fu) => (
+            <div key={fu.id} className="flex items-center justify-between py-1.5">
+              <span className="text-xs text-text-secondary">
+                Follow-up #{fu.followup_number} — {fu.channel}
+              </span>
+              <button
+                onClick={() => generateMessage(fu.channel, fu.followup_number)}
+                disabled={generating}
+                className="text-[11px] px-2 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+              >
+                Send
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <button
+          onClick={() => generateMessage(availableChannels[0], 0)}
+          disabled={generating}
+          className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 min-h-[40px]"
+        >
+          {generating ? (
+            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            "📤"
+          )}
+          Send Message
+        </button>
+        <button
+          onClick={() => setShowReplyForm(true)}
+          className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-success/30 bg-success/5 text-success text-xs font-semibold hover:bg-success/10 transition-colors min-h-[40px]"
+        >
+          ✅ Mark as Replied
+        </button>
+      </div>
+
+      {/* Channel Picker (if multiple) */}
+      {availableChannels.length > 1 && (
+        <div className="flex gap-2 mb-4">
+          {availableChannels.map((ch) => (
+            <button
+              key={ch}
+              onClick={() => generateMessage(ch, sentMessages.length)}
+              disabled={generating}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border-default text-xs text-text-secondary hover:bg-bg-hover transition-colors"
+            >
+              <span>{CHANNEL_ICONS[ch]}</span>
+              {ch.charAt(0).toUpperCase() + ch.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Draft Message */}
+      {showDraft && (
+        <div className="mb-4 p-3 rounded-lg bg-bg-primary border border-accent/30">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-semibold text-accent">Draft Message</p>
+            <button onClick={() => setShowDraft(false)} className="text-text-muted hover:text-text-primary">
+              <X size={14} />
+            </button>
+          </div>
+          <textarea
+            value={draftMessage}
+            onChange={(e) => setDraftMessage(e.target.value)}
+            rows={6}
+            className="w-full px-3 py-2 rounded-md bg-bg-surface border border-border-default text-text-primary text-sm focus:outline-none focus:border-accent resize-none mb-2"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(draftMessage)
+              }}
+              className="flex-1 px-3 py-2 rounded-md border border-border-default text-xs font-medium text-text-secondary hover:bg-bg-hover transition-colors"
+            >
+              📋 Copy
+            </button>
+            <button
+              onClick={() => {
+                // Create outreach record with the edited message
+                fetch("/api/outreach", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    lead_id: leadId,
+                    channel: draftChannel,
+                    custom_message: draftMessage,
+                    followup_number: sentMessages.length,
+                  }),
+                }).then(res => res.json()).then(data => {
+                  if (data.outreach) {
+                    markAsSent(data.outreach.id)
+                  }
+                })
+                setShowDraft(false)
+              }}
+              disabled={sending}
+              className="flex-1 px-3 py-2 rounded-md bg-success text-white text-xs font-semibold hover:bg-success/90 transition-colors disabled:opacity-50"
+            >
+              {sending ? "Saving..." : "✅ Mark as Sent"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Reply Form */}
+      {showReplyForm && (
+        <div className="mb-4 p-3 rounded-lg bg-success/5 border border-success/20">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-semibold text-success">Log Reply</p>
+            <button onClick={() => { setShowReplyForm(false); setReplyResult(null) }} className="text-text-muted hover:text-text-primary">
+              <X size={14} />
+            </button>
+          </div>
+          <textarea
+            value={replyMessage}
+            onChange={(e) => setReplyMessage(e.target.value)}
+            rows={4}
+            placeholder="Paste the reply message here..."
+            className="w-full px-3 py-2 rounded-md bg-bg-surface border border-border-default text-text-primary text-sm focus:outline-none focus:border-success resize-none mb-2"
+          />
+          <button
+            onClick={logReply}
+            disabled={sending || !replyMessage.trim()}
+            className="w-full px-3 py-2 rounded-md bg-success text-white text-xs font-semibold hover:bg-success/90 transition-colors disabled:opacity-50"
+          >
+            {sending ? "Analyzing..." : "🤖 Save & Analyze Reply"}
+          </button>
+          {replyResult && (
+            <div className="mt-2 p-2 rounded-md bg-bg-surface border border-border-default">
+              <p className="text-[11px] font-semibold text-text-muted mb-1">AI Analysis:</p>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                replyResult.sentiment === "positive" || replyResult.sentiment === "interested"
+                  ? "bg-success/10 text-success"
+                  : replyResult.sentiment === "negative" || replyResult.sentiment === "not_interested"
+                  ? "bg-error/10 text-error"
+                  : "bg-info/10 text-info"
+              }`}>
+                {replyResult.sentiment}
+              </span>
+              {replyResult.ai_analysis && (
+                <p className="text-xs text-text-secondary mt-1">{replyResult.ai_analysis}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Outreach History */}
+      {loading ? (
+        <div className="text-xs text-text-muted text-center py-3">Loading outreach...</div>
+      ) : sentMessages.length === 0 && draftMessages.length === 0 ? (
+        <div className="text-xs text-text-muted text-center py-3">
+          No outreach yet. Click "Send Message" to start.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {outreach.map((o) => (
+            <div
+              key={o.id}
+              className="flex items-start gap-2 p-2.5 rounded-lg bg-bg-primary border border-border-default"
+            >
+              <span className="text-sm mt-0.5">{CHANNEL_ICONS[o.channel] || "📤"}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[11px] font-semibold text-text-primary">
+                    {o.followup_number === 0 ? "Initial" : `Follow-up #${o.followup_number}`}
+                  </span>
+                  <span
+                    className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
+                    style={{
+                      backgroundColor: `${CHANNEL_COLORS[o.channel] || "#6b7280"}15`,
+                      color: CHANNEL_COLORS[o.channel] || "#6b7280",
+                    }}
+                  >
+                    {o.channel}
+                  </span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                    o.status === "sent" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                  }`}>
+                    {o.status}
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-secondary line-clamp-2">{o.message}</p>
+                {o.sent_at && (
+                  <p className="text-[10px] text-text-muted mt-1">
+                    Sent {new Date(o.sent_at).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+                  </p>
+                )}
+              </div>
+              {o.status === "draft" && (
+                <button
+                  onClick={() => markAsSent(o.id)}
+                  disabled={sending}
+                  className="text-[11px] px-2 py-1 rounded bg-success/10 text-success hover:bg-success/20 transition-colors"
+                >
+                  Mark Sent
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 function AddLeadModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [form, setForm] = useState({
     business_name: "",
