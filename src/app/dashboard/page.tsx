@@ -3,7 +3,7 @@
 import { useState } from "react"
 import useSWR from "swr"
 import { motion } from "framer-motion"
-import { LayoutDashboard, Users, Search, Code, Send, Receipt, Activity, Zap, Loader2, Clock } from "lucide-react"
+import { LayoutDashboard, Users, Search, Code, Send, Receipt, Activity, Zap, Loader2, Clock, FileText, MapPin, Tag } from "lucide-react"
 import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase"
 import { staggerContainer } from "@/lib/animations"
@@ -26,6 +26,29 @@ const AGENT_ICONS: Record<string, string> = {
 
 const CATEGORIES = ["restaurant", "salon", "barbershop", "hotel", "pharmacy", "church", "supermarket"]
 
+const CATEGORY_COLORS: Record<string, string> = {
+  restaurant: "#f97316",
+  salon: "#ec4899",
+  barbershop: "#3b82f6",
+  hotel: "#8b5cf6",
+  pharmacy: "#10b981",
+  church: "#f59e0b",
+  supermarket: "#06b6d4",
+  real_estate: "#64748b",
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  new: "#3b82f6",
+  profiled: "#06b6d4",
+  spec_written: "#8b5cf6",
+  site_built: "#10b981",
+  contacted: "#f59e0b",
+  interested: "#f97316",
+  closed: "#10b981",
+  dead: "#6b7280",
+  trash: "#ef4444",
+}
+
 export default function DashboardPage() {
   // Quick Scout state
   const [scoutCategory, setScoutCategory] = useState("restaurant")
@@ -40,6 +63,7 @@ export default function DashboardPage() {
       newToday: number
       contacted: number
       interested: number
+      profiled: number
       sitesBuilt: number
       revenue: number
       totalProjects: number
@@ -49,6 +73,9 @@ export default function DashboardPage() {
     }
     events: { summary: string; agent: string; created_at: string; success: boolean }[]
     weekActivity: { date: string; count: number; label: string }[]
+    pipelineStages: { stage: string; count: number }[]
+    categoryBreakdown: { category: string; count: number }[]
+    cityBreakdown: { city: string; count: number }[]
   }
 
   const { data, isLoading: loading, mutate } = useSWR<DashboardData>(
@@ -58,7 +85,7 @@ export default function DashboardPage() {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
       const [leadsRes, eventsRes, projectsRes, invoicesRes, outreachRes] = await Promise.all([
-        supabase.from("leads").select("status, created_at"),
+        supabase.from("leads").select("status, created_at, category, city"),
         supabase.from("pipeline_events").select("summary, agent, created_at, success").order("created_at", { ascending: false }).limit(20),
         supabase.from("projects").select("id", { count: "exact", head: true }),
         supabase.from("invoices").select("amount_ngn, status"),
@@ -81,11 +108,42 @@ export default function DashboardPage() {
       const totalLeads = leads.length
       const interested = leads.filter((l: { status: string }) => l.status === "interested").length
       const contacted = leads.filter((l: { status: string }) => l.status === "contacted").length
+      const profiled = leads.filter((l: { status: string }) => l.status === "profiled").length
       const specWritten = leads.filter((l: { status: string }) => l.status === "spec_written").length
       const siteBuilt = leads.filter((l: { status: string }) => l.status === "site_built").length
       const conversionRate = totalLeads > 0
         ? Math.round((interested + contacted + specWritten + siteBuilt) / totalLeads * 100)
         : 0
+
+      // Pipeline stage breakdown
+      const stageCounts: Record<string, number> = {}
+      for (const lead of leads) {
+        const stage = lead.status || "unknown"
+        stageCounts[stage] = (stageCounts[stage] || 0) + 1
+      }
+      const pipelineStages = Object.entries(stageCounts)
+        .map(([stage, count]) => ({ stage, count }))
+        .sort((a, b) => b.count - a.count)
+
+      // Category breakdown
+      const categoryCounts: Record<string, number> = {}
+      for (const lead of leads) {
+        const cat = lead.category || "unknown"
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1
+      }
+      const categoryBreakdown = Object.entries(categoryCounts)
+        .map(([category, count]) => ({ category, count }))
+        .sort((a, b) => b.count - a.count)
+
+      // City breakdown
+      const cityCounts: Record<string, number> = {}
+      for (const lead of leads) {
+        const city = lead.city || "unknown"
+        cityCounts[city] = (cityCounts[city] || 0) + 1
+      }
+      const cityBreakdown = Object.entries(cityCounts)
+        .map(([city, count]) => ({ city, count }))
+        .sort((a, b) => b.count - a.count)
 
       const weekEventsRes = await supabase
         .from("pipeline_events")
@@ -108,6 +166,7 @@ export default function DashboardPage() {
           newToday: leads.filter((l: { created_at: string }) => l.created_at.startsWith(today)).length,
           contacted,
           interested,
+          profiled,
           sitesBuilt: specWritten + siteBuilt,
           revenue,
           totalProjects: projectsRes.count || 0,
@@ -117,14 +176,20 @@ export default function DashboardPage() {
         },
         events: eventsRes.data || [],
         weekActivity,
+        pipelineStages,
+        categoryBreakdown,
+        cityBreakdown,
       }
     },
     { refreshInterval: 10000, revalidateOnFocus: true }
   )
 
-  const stats = data?.stats || { totalLeads: 0, newToday: 0, contacted: 0, interested: 0, sitesBuilt: 0, revenue: 0, totalProjects: 0, emailsSent: 0, pendingFollowUps: 0, conversionRate: 0 }
+  const stats = data?.stats || { totalLeads: 0, newToday: 0, contacted: 0, interested: 0, profiled: 0, sitesBuilt: 0, revenue: 0, totalProjects: 0, emailsSent: 0, pendingFollowUps: 0, conversionRate: 0 }
   const events = data?.events || []
   const weekActivity = data?.weekActivity || []
+  const pipelineStages = data?.pipelineStages || []
+  const categoryBreakdown = data?.categoryBreakdown || []
+  const cityBreakdown = data?.cityBreakdown || []
 
   const handleQuickScout = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -164,8 +229,10 @@ export default function DashboardPage() {
   const statCards = [
     { label: "Total Leads", value: stats.totalLeads, icon: Users, color: "text-info" },
     { label: "New Today", value: stats.newToday, icon: LayoutDashboard, color: "text-accent" },
+    { label: "Profiled", value: stats.profiled, icon: FileText, color: "text-info" },
     { label: "Contacted", value: stats.contacted, icon: Send, color: "text-warning" },
     { label: "Interested", value: stats.interested, icon: Activity, color: "text-success" },
+    { label: "Sites Built", value: stats.sitesBuilt, icon: Code, color: "text-success" },
     { label: "Projects", value: stats.totalProjects, icon: Code, color: "text-info" },
     { label: "Revenue", value: `₦${stats.revenue.toLocaleString()}`, icon: Receipt, color: "text-accent" },
     { label: "Emails Sent", value: stats.emailsSent, icon: Send, color: "text-info" },
@@ -191,7 +258,7 @@ export default function DashboardPage() {
 
       {/* Stats Grid */}
       <motion.div
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-5 gap-4"
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4"
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
@@ -214,6 +281,130 @@ export default function DashboardPage() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Pipeline Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Pipeline Stages */}
+        <div>
+          <h2 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Activity size={12} />
+            Pipeline Stages
+          </h2>
+          <div className="bg-bg-surface border border-border-default rounded-xl p-5 shadow-sm">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => <div key={i} className="h-8 bg-bg-hover rounded animate-pulse" />)}
+              </div>
+            ) : pipelineStages.length === 0 ? (
+              <p className="text-sm text-text-muted text-center py-4">No data</p>
+            ) : (
+              <div className="space-y-3">
+                {pipelineStages.map(({ stage, count }) => {
+                  const percentage = stats.totalLeads > 0 ? Math.round((count / stats.totalLeads) * 100) : 0
+                  const color = STATUS_COLORS[stage] || "#6b7280"
+                  return (
+                    <div key={stage}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-text-secondary capitalize">{stage.replace("_", " ")}</span>
+                        <span className="text-sm font-semibold text-text-primary">{count}</span>
+                      </div>
+                      <div className="w-full h-2 bg-bg-hover rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: color }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage}%` }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Category Breakdown */}
+        <div>
+          <h2 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Tag size={12} />
+            By Category
+          </h2>
+          <div className="bg-bg-surface border border-border-default rounded-xl p-5 shadow-sm">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => <div key={i} className="h-8 bg-bg-hover rounded animate-pulse" />)}
+              </div>
+            ) : categoryBreakdown.length === 0 ? (
+              <p className="text-sm text-text-muted text-center py-4">No data</p>
+            ) : (
+              <div className="space-y-3">
+                {categoryBreakdown.map(({ category, count }) => {
+                  const percentage = stats.totalLeads > 0 ? Math.round((count / stats.totalLeads) * 100) : 0
+                  const color = CATEGORY_COLORS[category] || "#6b7280"
+                  return (
+                    <div key={category}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-text-secondary capitalize">{category}</span>
+                        <span className="text-sm font-semibold text-text-primary">{count}</span>
+                      </div>
+                      <div className="w-full h-2 bg-bg-hover rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: color }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage}%` }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* City Breakdown */}
+        <div>
+          <h2 className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+            <MapPin size={12} />
+            By City
+          </h2>
+          <div className="bg-bg-surface border border-border-default rounded-xl p-5 shadow-sm">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => <div key={i} className="h-8 bg-bg-hover rounded animate-pulse" />)}
+              </div>
+            ) : cityBreakdown.length === 0 ? (
+              <p className="text-sm text-text-muted text-center py-4">No data</p>
+            ) : (
+              <div className="space-y-3">
+                {cityBreakdown.map(({ city, count }) => {
+                  const percentage = stats.totalLeads > 0 ? Math.round((count / stats.totalLeads) * 100) : 0
+                  return (
+                    <div key={city}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-text-secondary">{city}</span>
+                        <span className="text-sm font-semibold text-text-primary">{count}</span>
+                      </div>
+                      <div className="w-full h-2 bg-bg-hover rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full bg-accent"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage}%` }}
+                          transition={{ duration: 0.6, ease: "easeOut" }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* This Week */}
       <div>
