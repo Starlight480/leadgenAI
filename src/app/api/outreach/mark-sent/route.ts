@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Outreach not found" }, { status: 404 })
   }
 
-  // Mark as sent
+  // Mark as sent using existing schema
   const { error: updateErr } = await supabase
     .from("outreach")
     .update({
@@ -33,13 +33,12 @@ export async function POST(request: NextRequest) {
 
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 
-  // Update lead's outreach status and count
+  // Update lead's outreach status
   await supabase
     .from("leads")
     .update({
       outreach_status: "contacted",
       last_contacted_at: new Date().toISOString(),
-      outreach_count: 0, // Will need to increment manually
     })
     .eq("id", outreach.lead_id)
 
@@ -57,9 +56,17 @@ export async function POST(request: NextRequest) {
       .eq("id", outreach.lead_id)
   }
 
-  // Schedule follow-up if this was initial message (followup_number = 0) and we haven't hit max
-  if (outreach.followup_number < 3) {
-    const followupNumber = outreach.followup_number + 1
+  // Count previous outreach for this lead
+  const { data: previousOutreach } = await supabase
+    .from("outreach")
+    .select("id")
+    .eq("lead_id", outreach.lead_id)
+    .eq("status", "sent")
+
+  const followupNumber = (previousOutreach?.length || 0)
+
+  // Schedule follow-up if we haven't hit max (3)
+  if (followupNumber < 3) {
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 3) // 3 days from now
 
@@ -68,7 +75,7 @@ export async function POST(request: NextRequest) {
       .from("follow_ups")
       .select("id")
       .eq("lead_id", outreach.lead_id)
-      .eq("followup_number", followupNumber)
+      .eq("followup_number", followupNumber + 1)
       .eq("status", "pending")
       .single()
 
@@ -76,7 +83,7 @@ export async function POST(request: NextRequest) {
       await supabase.from("follow_ups").insert({
         lead_id: outreach.lead_id,
         outreach_id: outreach_id,
-        followup_number: followupNumber,
+        followup_number: followupNumber + 1,
         due_date: dueDate.toISOString(),
         status: "pending",
         channel: outreach.channel,

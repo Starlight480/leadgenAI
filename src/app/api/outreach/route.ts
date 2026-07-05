@@ -135,17 +135,16 @@ Write ONLY the message text. No quotes, no explanation.`
     }
   }
 
-  // Create outreach record
+  // Create outreach record using existing schema
   const { data: outreach, error: outreachErr } = await supabase
     .from("outreach")
     .insert({
       lead_id,
       channel,
       message,
-      subject: subject || null,
-      status: "draft",
-      followup_number,
-      template_id: template_id || null,
+      subject: subject || "",
+      status: "pending",
+      agent: "dev",
     })
     .select()
     .single()
