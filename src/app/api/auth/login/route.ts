@@ -63,11 +63,11 @@ export async function POST(request: NextRequest) {
   }
 
   // --- Fallback: hardcoded credentials ---
-  const u = process.env.AUTH_USERNAME || "dami"
+  const u = process.env.AUTH_USERNAME || "dami@leadgen.os"
   const p = process.env.AUTH_PASSWORD || "LeadGen2026"
 
   // For legacy username auth, accept the identifier as-is
-  if (identifierField === "username" && sanitizedIdentifier === u && sanitizedPassword === p) {
+  if (sanitizedIdentifier === u && sanitizedPassword === p) {
     const response = NextResponse.json({ success: true, provider: "legacy" })
     response.cookies.set("leadgen_session", "authenticated", {
       httpOnly: true,
@@ -77,22 +77,6 @@ export async function POST(request: NextRequest) {
       path: "/",
     })
     return response
-  }
-
-  // Also try email as username for legacy auth
-  if (identifierField === "email") {
-    const emailPrefix = sanitizedIdentifier.split("@")[0]
-    if (emailPrefix === u && sanitizedPassword === p) {
-      const response = NextResponse.json({ success: true, provider: "legacy" })
-      response.cookies.set("leadgen_session", "authenticated", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30,
-        path: "/",
-      })
-      return response
-    }
   }
 
   return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
