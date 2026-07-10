@@ -63,11 +63,15 @@ export async function POST(request: NextRequest) {
   }
 
   // --- Fallback: hardcoded credentials ---
-  const u = process.env.AUTH_USERNAME || "dami@leadgen.os"
-  const p = process.env.AUTH_PASSWORD || "LeadGen2026"
+  // Match against email directly OR the prefix before @
+  // (so both "dami@leadgen.os" and "dami" work)
+  const HARDCODED_EMAIL = "dami@leadgen.os"
+  const HARDCODED_PASSWORD = "LeadGen2026"
+  const emailPrefix = sanitizedIdentifier.split("@")[0]
+  const emailMatches = sanitizedIdentifier === HARDCODED_EMAIL || emailPrefix === HARDCODED_EMAIL.split("@")[0]
+  const passwordMatches = sanitizedPassword === HARDCODED_PASSWORD
 
-  // For legacy username auth, accept the identifier as-is
-  if (sanitizedIdentifier === u && sanitizedPassword === p) {
+  if (emailMatches && passwordMatches) {
     const response = NextResponse.json({ success: true, provider: "legacy" })
     response.cookies.set("leadgen_session", "authenticated", {
       httpOnly: true,
