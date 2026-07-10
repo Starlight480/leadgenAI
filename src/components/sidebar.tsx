@@ -10,7 +10,6 @@ import {
   Search,
   Code,
   Send,
-  Building,
   Receipt,
   Activity,
   Clock,
@@ -29,7 +28,7 @@ const navItems = [
   { href: "/projects", label: "Projects", icon: Code },
   { href: "/outreach", label: "Outreach", icon: Send },
   { href: "/followups", label: "Follow-ups", icon: Clock },
-  { href: "/rentnaija", label: "RentNaija", icon: Building },
+
   { href: "/invoices", label: "Invoices", icon: Receipt },
   { href: "/pipeline", label: "Pipeline", icon: Activity },
 ]

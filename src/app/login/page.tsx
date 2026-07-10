@@ -33,7 +33,8 @@ export default function LoginPage() {
     setError("")
     setLoading(true)
     try {
-      const safeEmail = sanitizeLoginInput(email, "email")
+      const identifierField = email.includes("@") ? "email" as const : "username" as const
+      const safeEmail = sanitizeLoginInput(email, identifierField)
       const safePassword = sanitizeLoginInput(password, "password")
       if (!safeEmail.valid || !safePassword.valid) {
         setError(safeEmail.error || safePassword.error || "Invalid input")
@@ -182,16 +183,16 @@ export default function LoginPage() {
             <form onSubmit={handleSignIn} className="space-y-5">
               <div>
                 <label className="block text-[11px] uppercase tracking-wider font-semibold text-text-muted mb-2">
-                  Email
+                  Email or Username
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border border-border-default bg-bg-primary text-text-primary text-sm focus:outline-none focus:border-accent transition-colors min-h-[48px]"
-                  placeholder="Enter email address"
+                  placeholder="Enter email or username"
                   autoFocus
-                  autoComplete="email"
+                  autoComplete="username"
                 />
               </div>
               <div>

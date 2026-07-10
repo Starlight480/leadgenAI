@@ -157,30 +157,6 @@ export interface Invoice {
   created_at: string
 }
 
-export interface RentNaijaListing {
-  id: string
-  lead_id: string | null
-  title: string
-  listing_type: 'apartment' | 'duplex' | 'room' | 'bungalow' | 'office' | 'shop' | 'land' | 'shortlet'
-  price_yearly_ngn: number | null
-  bedrooms: number | null
-  bathrooms: number | null
-  location: string
-  area: string | null
-  city: string
-  description: string | null
-  amenities: string[] | null
-  landlord_name: string | null
-  landlord_phone: string | null
-  landlord_whatsapp: string | null
-  source_platform: string
-  source_url: string | null
-  pushed_to_rentnaija: boolean
-  rentnaija_listing_id: string | null
-  pushed_at: string | null
-  created_at: string
-}
-
 export interface FollowUp {
   id: string
   lead_id: string

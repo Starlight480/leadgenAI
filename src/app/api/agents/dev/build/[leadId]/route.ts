@@ -19,7 +19,6 @@ export async function POST(
     )
   }
 
-  const path = body.path || 'website'
   const supabase = getSupabaseAdmin()
   const startTime = Date.now()
 
@@ -47,12 +46,7 @@ export async function POST(
   }
 
   try {
-    if (path === 'rental') {
-      // Path B: Rental listing push to RentNaija
-      return await handleRentalPath(supabase, lead, profile, startTime)
-    }
-
-    // Path A: Website build — generate spec only (HTML generated separately)
+    // Website build — generate spec only (HTML generated separately)
     const systemPrompt = `You are Dev, a website specification agent for LeadGen OS. Generate a website SPEC for a Nigerian business. Do NOT generate HTML code — just the spec.
 
 RULES:
@@ -215,50 +209,4 @@ Lat/Lng: ${lead.lat || 'N/A'}, ${lead.lng || 'N/A'}`
   }
 }
 
-async function handleRentalPath(
-  supabase: ReturnType<typeof getSupabaseAdmin>,
-  lead: Record<string, unknown>,
-  profile: Record<string, unknown>,
-  startTime: number
-) {
-  try {
-    const { data: listing, error: listErr } = await supabase
-      .from('rentnaija_listings')
-      .insert({
-        lead_id: lead.id,
-        title: `${lead.business_name} — ${lead.area || lead.city}`,
-        listing_type: 'apartment',
-        location: String(lead.address || lead.city),
-        area: lead.area as string,
-        city: lead.city as string,
-        description: String(profile.business_summary || ''),
-        source_platform: 'google_maps',
-        pushed_to_rentnaija: false,
-      })
-      .select('id')
-      .single()
 
-    if (listErr) throw listErr
-
-    await supabase
-      .from('leads')
-      .update({ status: 'spec_written', pipeline_stage: 'built' })
-      .eq('id', lead.id)
-
-    const duration = Date.now() - startTime
-    await supabase.from('pipeline_events').insert({
-      lead_id: lead.id as string,
-      agent: 'dev',
-      event_type: 'rental_listing_created',
-      summary: `Dev created rental listing for "${lead.business_name}"`,
-      details: { listing_id: listing.id },
-      duration_ms: duration,
-      success: true,
-    })
-
-    return NextResponse.json({ listing_id: listing.id })
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error)
-    throw new Error(`Rental path failed: ${errMsg}`)
-  }
-}
