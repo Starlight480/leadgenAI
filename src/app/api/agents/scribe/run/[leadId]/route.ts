@@ -81,7 +81,7 @@ Respond with ONLY the JSON object. No markdown, no explanation.`
       callLLM([
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
-      ], 'deepseek/deepseek-chat-v3-0324', { temperature: 0.3, max_tokens: 2000 })
+      ], 'openrouter/owl-alpha', { temperature: 0.3, max_tokens: 2000 })
     )
 
     // Parse LLM response
