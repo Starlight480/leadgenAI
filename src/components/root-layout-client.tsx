@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react"
 import { sanitizeLoginInput } from "@/lib/security"
 import { CookieConsent } from "@/components/cookie-consent"
 
+const PUBLIC_ROUTES = new Set(["/", "/features", "/pricing", "/terms", "/login"])
+
 export default function RootLayoutClient({
   children,
 }: {
@@ -18,7 +20,7 @@ export default function RootLayoutClient({
 
   const checkAuth = useCallback(() => {
     // Skip auth check on public pages
-    if (pathname === "/") return
+    if (PUBLIC_ROUTES.has(pathname)) return
     fetch("/api/auth/check")
       .then((r) => {
         if (r.ok) {
@@ -36,7 +38,7 @@ export default function RootLayoutClient({
 
   // Periodic session check every 5 minutes
   useEffect(() => {
-    if (pathname === "/") return
+    if (PUBLIC_ROUTES.has(pathname)) return
     const interval = setInterval(() => {
       fetch("/api/auth/check")
         .then((r) => {
@@ -53,19 +55,9 @@ export default function RootLayoutClient({
     return () => clearInterval(interval)
   }, [pathname, router])
 
-  // Public landing page — render directly, no auth gate
-  if (pathname === "/") {
+  // Public landing pages — render directly, no auth gate
+  if (PUBLIC_ROUTES.has(pathname)) {
     return <>{children}</>
-  }
-
-  // Public terms page
-  if (pathname === "/terms") {
-    return (
-      <>
-        {children}
-        <CookieConsent />
-      </>
-    )
   }
 
   if (auth === null) {

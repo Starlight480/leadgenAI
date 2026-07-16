@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sanitizeLoginInput, checkRateLimit, getRateLimitKey } from "@/lib/security"
-import { getSupabaseAdmin } from "@/lib/supabase"
+import { attemptLogin } from "@/lib/auth-server"
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
@@ -39,49 +39,15 @@ export async function POST(request: NextRequest) {
   const sanitizedIdentifier = identifierCheck.sanitized!
   const sanitizedPassword = passwordCheck.sanitized!
 
-  // --- Try Supabase Auth first ---
-  try {
-    const supabase = getSupabaseAdmin()
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: identifierField === "email" ? sanitizedIdentifier : `${sanitizedIdentifier}@leadgen.local`,
-      password: sanitizedPassword,
-    })
+  // --- Server-side auth via JWT ---
+  const result = attemptLogin(sanitizedIdentifier, sanitizedPassword)
 
-    if (!error && data.session) {
-      const response = NextResponse.json({ success: true, provider: "supabase" })
-      response.cookies.set("leadgen_session", "authenticated", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30,
-        path: "/",
-      })
-      return response
-    }
-  } catch {
-    // Supabase Auth not available — fall back to hardcoded
+  if (!result.success) {
+    return NextResponse.json({ error: result.error || "Invalid credentials" }, { status: 401 })
   }
 
-  // --- Fallback: hardcoded credentials ---
-  // Match against email directly OR the prefix before @
-  // (so both "dami@leadgen.os" and "dami" work)
-  const HARDCODED_EMAIL = "dami@leadgen.os"
-  const HARDCODED_PASSWORD = "LeadGen2026"
-  const emailPrefix = sanitizedIdentifier.split("@")[0]
-  const emailMatches = sanitizedIdentifier === HARDCODED_EMAIL || emailPrefix === HARDCODED_EMAIL.split("@")[0]
-  const passwordMatches = sanitizedPassword === HARDCODED_PASSWORD
+  const response = NextResponse.json({ success: true, provider: "jwt" })
+  response.headers.set("Set-Cookie", result.cookie!)
 
-  if (emailMatches && passwordMatches) {
-    const response = NextResponse.json({ success: true, provider: "legacy" })
-    response.cookies.set("leadgen_session", "authenticated", {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30,
-      path: "/",
-    })
-    return response
-  }
-
-  return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+  return response
 }

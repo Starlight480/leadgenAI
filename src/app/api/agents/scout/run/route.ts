@@ -258,7 +258,7 @@ function extractCandidate(result: TavilyResult, area: string, city: string): Can
   const combined = `${title} ${content} ${rawContent}`
 
   // Try to get business name from title
-  let businessName = cleanBusinessName(title)
+  const businessName = cleanBusinessName(title)
   if (!businessName) return null
 
   // Extract contact info from content
@@ -305,7 +305,7 @@ interface FilterResult {
   reason: string
 }
 
-const FILTER_MODEL = "google/gemma-4-31b-it:free"
+const FILTER_MODEL = "deepseek/deepseek-chat-v3-0324"
 const BATCH_SIZE = 8 // process candidates in batches to stay within token limits
 
 function buildFilterPrompt(candidates: Candidate[]): LLMMessage[] {

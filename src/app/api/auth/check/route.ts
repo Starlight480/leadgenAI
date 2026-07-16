@@ -1,29 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getSupabaseAdmin } from "@/lib/supabase"
+import { verifySession } from "@/lib/auth-server"
 
 export async function GET(request: NextRequest) {
-  // Check Supabase Auth session first
-  try {
-    const supabase = getSupabaseAdmin()
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+  const cookieHeader = request.headers.get("cookie")
+  const session = verifySession(cookieHeader)
 
-    if (session) {
-      return NextResponse.json({
-        authenticated: true,
-        provider: "supabase",
-        expires_at: session.expires_at,
-      })
-    }
-  } catch {
-    // Supabase Auth not available — fall back to cookie check
-  }
-
-  // Fallback: check the simple cookie
-  const legacySession = request.cookies.get("leadgen_session")?.value
-  if (legacySession === "authenticated") {
-    return NextResponse.json({ authenticated: true, provider: "legacy" })
+  if (session.authenticated) {
+    return NextResponse.json({
+      authenticated: true,
+      provider: "jwt",
+      email: session.email,
+    })
   }
 
   return NextResponse.json({ authenticated: false }, { status: 401 })
