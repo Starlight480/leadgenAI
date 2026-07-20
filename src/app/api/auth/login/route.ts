@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
   const sanitizedIdentifier = identifierCheck.sanitized!
   const sanitizedPassword = passwordCheck.sanitized!
 
-  // --- Server-side auth via JWT ---
-  const result = attemptLogin(sanitizedIdentifier, sanitizedPassword)
+  // --- Server-side auth via JWT (verified against Supabase users table) ---
+  const result = await attemptLogin(sanitizedIdentifier, sanitizedPassword)
 
   if (!result.success) {
     return NextResponse.json({ error: result.error || "Invalid credentials" }, { status: 401 })

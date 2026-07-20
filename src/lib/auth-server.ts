@@ -1,17 +1,16 @@
 /**
  * Server-side Auth Utilities
- * Uses Node.js crypto for JWT signing + password hashing.
- * No external dependencies — uses built-in crypto only.
+ * Verifies credentials against Supabase users table.
+ * Uses Node.js crypto for JWT signing — no external deps.
+ * Passwords are hashed with bcrypt (pgcrypto) in Supabase.
  */
 
-import { createHmac, randomBytes, timingSafeEqual, scryptSync } from "crypto"
+import { createHmac, timingSafeEqual } from "crypto"
+import { getSupabaseAdmin } from "./supabase"
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "dami@leadgen.os"
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "LeadGen2026"
 const JWT_SECRET = process.env.JWT_SECRET || (() => {
-  // Generate a persistent secret from a stable base if none configured
   const seed = process.env.SUPABASE_SERVICE_ROLE_KEY || "leadgen-os-fallback-secret"
   return createHmac("sha256", seed).update("jwt-secret").digest("hex")
 })()
@@ -66,7 +65,6 @@ function verifyJWT(token: string): SessionPayload | null {
 
     const [headerB64, payloadB64, signatureB64] = parts
 
-    // Verify signature
     const expectedSig = createHmac("sha256", JWT_SECRET)
       .update(`${headerB64}.${payloadB64}`)
       .digest("base64url")
@@ -77,10 +75,8 @@ function verifyJWT(token: string): SessionPayload | null {
     if (sigBuffer.length !== expectedBuffer.length) return null
     if (!timingSafeEqual(sigBuffer, expectedBuffer)) return null
 
-    // Parse payload
     const payload = JSON.parse(fromBase64url(payloadB64)) as SessionPayload
 
-    // Check expiry
     if (payload.exp < Math.floor(Date.now() / 1000)) return null
 
     return payload
@@ -89,60 +85,60 @@ function verifyJWT(token: string): SessionPayload | null {
   }
 }
 
-// ─── Password Hashing ──────────────────────────────────────────────────────
-
-function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex")
-  const key = scryptSync(password, salt, 64).toString("hex")
-  return `${salt}:${key}`
-}
-
-function verifyPassword(password: string, hash: string): boolean {
-  const [salt, key] = hash.split(":")
-  if (!salt || !key) return false
-  const derivedKey = scryptSync(password, salt, 64).toString("hex")
-  return timingSafeEqual(Buffer.from(key), Buffer.from(derivedKey))
-}
-
-// Since we store the raw password in env, we hash it once at module load
-const _adminPasswordHash = hashPassword(ADMIN_PASSWORD)
-
 // ─── Public API ────────────────────────────────────────────────────────────
 
 /**
  * Attempt login with email + password.
+ * Verifies against Supabase users table (bcrypt-hashed passwords).
  * Returns JWT cookie config on success.
  */
-export function attemptLogin(email: string, password: string): {
+export async function attemptLogin(email: string, password: string): Promise<{
   success: boolean
   cookie?: string
   error?: string
-} {
+}> {
   if (!email || !password) {
     return { success: false, error: "Email and password are required" }
   }
 
-  // Accept both email and username (for backward compatibility)
-  const inputEmail = email.includes("@") ? email : `${email}@leadgen.local`
-  const adminEmailNormalized = ADMIN_EMAIL.toLowerCase()
-  const inputNormalized = inputEmail.toLowerCase()
+  // Normalise: accept "dami" as shorthand for "dami@leadgen.os"
+  const inputEmail = email.includes("@") ? email.toLowerCase() : `${email.toLowerCase()}@leadgen.os`
 
-  // Check against admin creds — also accept just the prefix
-  const adminPrefix = adminEmailNormalized.split("@")[0]
-  const inputPrefix = inputNormalized.split("@")[0]
-  const emailMatches = inputNormalized === adminEmailNormalized || inputPrefix === adminPrefix
+  try {
+    const supabase = getSupabaseAdmin()
 
-  if (!emailMatches || !verifyPassword(password, _adminPasswordHash)) {
-    return { success: false, error: "Invalid credentials" }
+    // Fetch user from Supabase by email
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("id, email, password_hash, role")
+      .eq("email", inputEmail)
+      .single()
+
+    if (error || !user) {
+      return { success: false, error: "Invalid credentials" }
+    }
+
+    // Verify password using Supabase's crypt() function (bcrypt)
+    // We let Postgres do the comparison so the hash never leaves the DB
+    const { data: matchResult, error: matchError } = await supabase
+      .rpc("verify_password", {
+        input_password: password,
+        stored_hash: user.password_hash,
+      })
+
+    if (matchError || !matchResult) {
+      return { success: false, error: "Invalid credentials" }
+    }
+
+    // Generate JWT
+    const token = signJWT({ email: user.email, role: user.role })
+
+    const cookie = `${COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_DURATION_SECONDS}`
+
+    return { success: true, cookie }
+  } catch {
+    return { success: false, error: "Authentication failed" }
   }
-
-  // Generate JWT
-  const token = signJWT({ email: ADMIN_EMAIL, role: "admin" })
-
-  // Return cookie setting
-  const cookie = `${COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_DURATION_SECONDS}`
-
-  return { success: true, cookie }
 }
 
 /**
