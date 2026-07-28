@@ -1,0 +1,206 @@
+# LeadGen OS — Codebase Audit & Improvement Plan
+
+## Executive Summary
+
+LeadGen OS is a Next.js 16 + Supabase application with a 5-agent pipeline (Scout → Scribe → Dev → Reach + Orchestrator). The codebase is functional but has several critical gaps in security, architecture, and maintainability. This plan prioritises fixes by impact and effort.
+
+---
+
+## 1. CRITICAL — Security & Auth
+
+### 1.1 JWT Secret Fallback (Security Risk)
+**File:** `src/lib/auth-server.ts:13-16`
+
+The JWT secret falls back to `SUPABASE_SERVICE_ROLE_KEY` if `JWT_SECRET` is not set. This means the service role key is used as the JWT signing key — if the JWT secret is ever compromised, the service role key is exposed.
+
+**Fix:**
+- Remove the fallback to `SUPABASE_SERVICE_ROLE_KEY`
+- Generate a random secret at build time if none is set (for dev only)
+- Add a startup check that fails loudly if `JWT_SECRET` is not set in production
+
+### 1.2 No Auth Middleware on API Routes
+**Files:** All `src/app/api/*` routes
+
+Every API route calls `getSupabaseAdmin()` directly without verifying the user's session. Any unauthenticated user can:
+- Create/delete leads (`POST /api/leads`, `DELETE /api/leads/[id]`)
+- Create/delete projects (`POST /api/projects`, `DELETE /api/projects/[id]`)
+- Create/delete invoices (`POST /api/invoices`, `DELETE /api/invoices/[id]`)
+- Trigger the full pipeline (`POST /api/agents/orchestrator/run`)
+
+**Fix:**
+- Add a `requireAuth()` wrapper that checks the session cookie before processing
+- Apply to all routes except `/api/auth/*` and `/api/webhooks/*`
+- Consider using Next.js middleware for a central auth check
+
+### 1.3 Rate Limiting is In-Memory Only
+**File:** `src/lib/security.ts:144`
+
+Rate limiting uses a `Map` stored in memory. On Vercel's serverless platform, each function invocation may run in a fresh process — rate limiting doesn't persist across invocations.
+
+**Fix:**
+- Use Upstash Redis (free tier) for distributed rate limiting
+- Or use Vercel's built-in rate limiting if available
+
+### 1.4 Cookie Missing `Secure` Flag on Logout
+**File:** `src/lib/auth-server.ts:174`
+
+The logout cookie sets `Max-Age=0` but the `Secure` flag is present. This is correct, but the `SameSite=Lax` could be tightened to `Strict` for a single-user app.
+
+**Status:** Minor — low priority.
+
+---
+
+## 2. HIGH — Architecture & Data Integrity
+
+### 2.1 Duplicate API Endpoints
+**Files:**
+- `src/app/api/follow-ups/route.ts` AND `src/app/api/followups/route.ts` — two endpoints for the same resource
+- `src/app/api/agents/reach/process/[leadId]/route.ts` — Reach agent has its own `withRetry` instead of importing from `@/lib/utils`
+
+**Fix:**
+- Remove `follow-ups` (keep `followups` — matches the DB table name)
+- Remove duplicate `withRetry` in Reach route, import from `@/lib/utils`
+
+### 2.2 No Input Validation on CRUD Endpoints
+**Files:** `src/app/api/leads/route.ts`, `src/app/api/projects/route.ts`, `src/app/api/invoices/route.ts`
+
+POST/PATCH endpoints accept raw JSON bodies and insert directly into Supabase with no validation:
+- `POST /api/leads` accepts any fields, no required field checks
+- `POST /api/projects` inserts `body` directly without filtering
+- `PATCH /api/leads/[id]` spreads `body` into `.update()` — allows overwriting any column including `id`, `created_at`, `campaign_id`
+
+**Fix:**
+- Add a validation layer (zod or manual) for each POST/PATCH endpoint
+- Whitelist allowed fields for PATCH operations
+- Validate types (e.g., `amount_ngn` should be a number)
+
+### 2.3 Scout Agent Has No Error Handling for Tavily API
+**File:** `src/app/api/agents/scout/run/route.ts:430-442`
+
+The `tavilySearch` function doesn't check if the response is OK before parsing JSON. If Tavily returns an error, it will crash.
+
+**Fix:**
+- Add `if (!res.ok) throw new Error(...)` check
+- Add retry logic for 429/5xx responses
+
+### 2.4 HTML Generator Hardcodes Contact Info
+**File:** `src/lib/html-generator.ts:977-999`
+
+The generated HTML has hardcoded placeholder phone (`tel:+234`), email (`info@{businessName}.com`), and Instagram (`@businessName`) links. These are fake and will confuse customers.
+
+**Fix:**
+- Accept lead contact info as parameters to `generateHTML()`
+- Pass actual phone, email, Instagram from the lead record
+- If no contact info, omit those sections instead of showing fake placeholders
+
+### 2.5 No Cleanup of `rentnaija` Tables
+**Files:** `leadgenAI/supabase/2026-07-20_drop-rentnaija-listings.sql`, `leadgenAI/supabase-migration-008-deploy.sql`
+
+The rentnaija code was removed from the app but the `rentnaija_listings` table may still exist in Supabase. The migration file `008-deploy.sql` references it.
+
+**Fix:**
+- Verify the `rentnaija_listings` table is dropped in Supabase
+- Remove any remaining references to rentnaija in the codebase
+
+---
+
+## 3. MEDIUM — UX & Maintainability
+
+### 3.1 Cookie Consent Doesn't Block Non-Essential Cookies
+**File:** `src/components/cookie-consent.tsx`
+
+The cookie consent banner shows and saves preferences, but no code actually checks the preferences before setting analytics/marketing cookies. The `analytics` and `marketing` flags are stored but never read.
+
+**Fix:**
+- Create a `useCookieConsent()` hook that checks preferences
+- Guard any analytics/marketing scripts behind consent checks
+- Add Google Analytics or Plausible integration with consent gating
+
+### 3.2 No Search on Dashboard
+**File:** `src/app/dashboard/page.tsx`
+
+The dashboard shows quick stats and recent activity but has no search or filter for leads. Users have to navigate to `/leads` to search.
+
+**Fix:**
+- Add a quick search bar on the dashboard
+- Add filter dropdowns (category, status)
+
+### 3.3 HTML Generator Lacks Category-Specific Templates
+**File:** `src/lib/html-generator.ts`
+
+The generator uses a single template for all categories. A restaurant website looks the same as a salon website. The Dev agent generates different specs per category, but the HTML template doesn't adapt.
+
+**Fix:**
+- Add category-specific section layouts (e.g., menu section for restaurants, services grid for salons)
+- Add category-specific icons and imagery
+- Consider adding a `gallery` section for visual businesses
+
+### 3.4 No Pagination on List Endpoints
+**Files:** `src/app/api/leads/route.ts` (has `limit` param but no offset), `src/app/api/campaigns/route.ts`, `src/app/api/projects/route.ts`, `src/app/api/invoices/route.ts`
+
+All list endpoints return all records with no pagination. As the database grows, this will become slow.
+
+**Fix:**
+- Add `offset` parameter to all list endpoints
+- Add pagination controls on the frontend
+- Consider cursor-based pagination for large datasets
+
+### 3.5 Duplicate `withRetry` Implementation
+**File:** `src/app/api/agents/reach/process/[leadId]/route.ts:20-30`
+
+Reach agent has its own `withRetry` function instead of importing from `@/lib/utils`. This means retry logic is inconsistent across agents.
+
+**Fix:**
+- Remove the local `withRetry` in Reach
+- Import from `@/lib/utils`
+
+---
+
+## 4. LOW — Polish & Debt
+
+### 4.1 TypeScript Types Are Incomplete
+**File:** `src/types/index.ts`
+
+The types file defines `Campaign`, `Lead`, `BusinessProfile` but is missing types for `OutreachItem`, `Invoice`, `Project`, `PipelineEvent`, `FollowUp`, `Spec`. Pages import these types from `@/types` but they may not exist.
+
+**Fix:**
+- Add missing type definitions
+- Use `satisfies` or `as const` for status arrays
+
+### 4.2 No E2E Tests
+There are no tests in the codebase. Critical paths (auth, lead creation, pipeline run) have no automated verification.
+
+**Fix:**
+- Add Playwright tests for auth flow
+- Add tests for the orchestrator pipeline (mocked)
+- Add unit tests for utility functions
+
+### 4.3 `next.config.ts` Not Reviewed
+**File:** `next.config.ts`
+
+Has not been inspected. May have security headers, CSP, or image optimization issues.
+
+**Fix:**
+- Review and add security headers (CSP, X-Frame-Options, etc.)
+- Configure image domains for any external images
+- Add `trailingSlash` if needed for GitHub Pages deployment
+
+### 4.4 No `.env.example` in `leadgenAI`
+The `.env.example` exists in `.hermes/hermes-agent/` but not in the project root. New developers won't know what env vars are needed.
+
+**Fix:**
+- Copy `.env.example` to the project root
+- Document all required env vars
+
+---
+
+## 5. Execution Priority
+
+| Priority | Items | Estimated Effort |
+|----------|-------|-----------------|
+| **Critical** | 1.1, 1.2, 1.3 | 4-6 hours |
+| **High** | 2.1, 2.2, 2.3, 2.4 | 6-8 hours |
+| **Medium** | 3.1, 3.2, 3.3, 3.4, 3.5 | 4-6 hours |
+| **Low** | 4.1, 4.2, 4.3, 4.4 | 4-8 hours |
+
+**Recommended approach:** Fix Critical + High first (10-14 hours), then Medium (4-6 hours), then Low as time permits.
